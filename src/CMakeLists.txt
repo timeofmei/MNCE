@@ -1,6 +1,10 @@
 add_library(mnce_domain STATIC
     domain/media-item.cpp
     domain/media-item.h
+    domain/media-series.cpp
+    domain/media-series.h
+    domain/natural-sort.cpp
+    domain/natural-sort.h
     domain/target-language.cpp
     domain/target-language.h
 )
@@ -9,8 +13,12 @@ target_include_directories(mnce_domain PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 set_target_properties(mnce_domain PROPERTIES CXX_EXTENSIONS OFF)
 
 add_library(mnce_persistence STATIC
+    persistence/database-schema.cpp
+    persistence/database-schema.h
     persistence/media-repository.cpp
     persistence/media-repository.h
+    persistence/series-repository.cpp
+    persistence/series-repository.h
 )
 target_link_libraries(
     mnce_persistence
@@ -27,6 +35,10 @@ add_library(mnce_services STATIC
     services/media-import-service.h
     services/media-refresh-service.cpp
     services/media-refresh-service.h
+    services/series-scan-service.cpp
+    services/series-scan-service.h
+    services/series-service.cpp
+    services/series-service.h
 )
 target_link_libraries(
     mnce_services

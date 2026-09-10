@@ -21,7 +21,7 @@ struct InsertMediaResult
 class MediaRepository
 {
 public:
-    static constexpr int supportedSchemaVersion = 1;
+    static constexpr int supportedSchemaVersion = 2;
 
     explicit MediaRepository(const TargetLanguageCatalog& catalog);
     ~MediaRepository();

@@ -1,5 +1,7 @@
 #include "persistence/media-repository.h"
 
+#include "persistence/database-schema.h"
+
 #include <QDateTime>
 #include <QDir>
 #include <QFileInfo>
@@ -97,57 +99,7 @@ QString MediaRepository::databasePath() const
 
 bool MediaRepository::initializeSchema(QString* error)
 {
-    QSqlQuery versionQuery(database_);
-    if (!versionQuery.exec(QStringLiteral("PRAGMA user_version")) || !versionQuery.next()) {
-        if (error != nullptr) {
-            *error = queryError(QStringLiteral("无法读取数据库版本"), versionQuery);
-        }
-        return false;
-    }
-    const int version = versionQuery.value(0).toInt();
-    if (version > supportedSchemaVersion) {
-        if (error != nullptr) {
-            *error = QStringLiteral("数据库版本 %1 高于此应用支持的版本 %2")
-                         .arg(version)
-                         .arg(supportedSchemaVersion);
-        }
-        return false;
-    }
-    if (version == supportedSchemaVersion) {
-        return true;
-    }
-
-    if (!database_.transaction()) {
-        if (error != nullptr) {
-            *error = database_.lastError().text();
-        }
-        return false;
-    }
-    QSqlQuery createQuery(database_);
-    const auto schema = QStringLiteral(
-        "CREATE TABLE media_items ("
-        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-        "content_hash BLOB NOT NULL,"
-        "file_size INTEGER NOT NULL CHECK (file_size >= 0),"
-        "current_path TEXT NOT NULL,"
-        "display_name TEXT NOT NULL,"
-        "target_language_id TEXT NOT NULL,"
-        "file_state TEXT NOT NULL CHECK (file_state IN ('available', 'missing')) ,"
-        "transcription_state TEXT NOT NULL CHECK (transcription_state IN ('not_started')) ,"
-        "created_at TEXT NOT NULL,"
-        "updated_at TEXT NOT NULL,"
-        "UNIQUE (target_language_id, content_hash)"
-        ")");
-    if (!createQuery.exec(schema)
-        || !createQuery.exec(QStringLiteral("PRAGMA user_version = 1"))
-        || !database_.commit()) {
-        if (error != nullptr) {
-            *error = queryError(QStringLiteral("无法初始化数据库"), createQuery);
-        }
-        database_.rollback();
-        return false;
-    }
-    return true;
+    return initializeDatabaseSchema(database_, error);
 }
 
 InsertMediaResult MediaRepository::insert(const MediaItem& item)
