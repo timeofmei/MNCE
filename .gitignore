@@ -1,0 +1,59 @@
+# CMake and Ninja build output
+/build/
+/out/
+CMakeUserPresets.json
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+CTestTestfile.cmake
+build.ninja
+.ninja_deps
+.ninja_log
+
+# IDE and editor state
+/.vs/
+/.vscode/
+/.idea/
+*.user
+*.user.*
+*.suo
+*.opensdf
+*.sdf
+*.VC.db
+*.VC.VC.opendb
+CMakeLists.txt.user*
+
+# Compiled and packaged artifacts
+*.obj
+*.o
+*.lib
+*.a
+*.dll
+*.so
+*.dylib
+*.exe
+*.pdb
+*.ilk
+*.msi
+*.zip
+/deploy/
+/dist/
+
+# Test output and temporary files
+Testing/
+*.log
+*.tmp
+
+# Local application data
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+
+# Whisper models and partial downloads
+*.bin
+*.gguf
+*.part
+*.download

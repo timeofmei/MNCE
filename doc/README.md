@@ -6,6 +6,7 @@ MNCE 意为 **Master New Concept English**。产品定位是一款轻量化的�
 
 ## 文档索引
 
+- [M1：可编译的桌面应用骨架](M1.md)：首个工程里程碑、交付内容和验收标准
 - [产品范围](product-scope.md)：产品定位、MVP 范围和明确不做的功能
 - [媒体库与语音识别](media-and-transcription.md)：文件管理、内容身份、模型和识别流程
 - [学习模式](learning-modes.md)：影子跟读、逐句听写和全文背诵
