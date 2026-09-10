@@ -14,6 +14,7 @@ MNCE 意为 **Master New Concept English**。产品定位是一款轻量化的�
 - [学习模式](learning-modes.md)：影子跟读、逐句听写和全文背诵
 - [页面与导航](ui-structure.md)：MVP 的初步信息架构
 - [分句服务](sentence-segmentation.md)：DeepSeek、自定义 OpenAI-compatible 接口及本地回退
+- [测试策略](testing-strategy.md)：自动测试分层、GUI 端到端测试和人工界面验证规则
 - [平台、发行与许可证](platform-and-distribution.md)：目标平台、安装包、技术栈和合规边界
 - [待讨论事项](open-questions.md)：尚未最终确定的产品和工程问题
 
