@@ -45,6 +45,7 @@ Testing/
 *.tmp
 
 # Local application data
+/local-data/
 *.db
 *.db-wal
 *.db-shm

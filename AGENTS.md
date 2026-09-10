@@ -28,6 +28,25 @@ Read `doc/README.md` before making product or architectural changes. Treat the d
 - Keep text files in UTF-8. Avoid changing line endings across an entire file unless the task requires it.
 - Never place API keys, credentials, tokens, private paths, model files, or generated user data in the repository.
 
+## Collaboration and decision checkpoints
+
+Do not work through an entire milestone silently. Keep the user involved at the points where their intent or a durable decision matters.
+
+- Treat user ideas as inputs to classify, not automatically as requirements for the current milestone. A newly mentioned idea may belong to the current milestone, a later milestone, a cross-cutting topic document, or the open-questions backlog.
+- Before writing an idea into a milestone document, determine whether it is necessary for that milestone's goal and acceptance criteria. If its timing or scope is ambiguous, ask the user where it belongs instead of assuming the active milestone.
+- Put durable rules that affect multiple milestones in the relevant topic document and let milestone documents reference them. Put unresolved ideas in `doc/open-questions.md`; do not invent a milestone number or implementation schedule without user agreement.
+- Keep future ideas out of current implementation scope unless the user explicitly approves bringing them forward. Recording an idea does not authorize implementing it.
+- When moving or recording an idea, tell the user where it was placed and why, so they can correct the classification before implementation begins.
+- At the start of a milestone, summarize the proposed goal, scope, exclusions, and acceptance criteria. Resolve the open product and engineering questions before starting implementation that depends on them.
+- After drafting or materially changing a milestone document, ask the user to review its decisions before treating the document as approved for implementation.
+- Ask before choosing behavior that affects user workflow, visible UI, stored data, schema compatibility, privacy, security, licensing, external services, dependency selection, packaging, or platform support.
+- Ask as soon as an unresolved decision is discovered. Do not implement dependent work while waiting and do not silently convert a recommendation into a decision.
+- Before a destructive data operation, irreversible migration, external publication, release, or other difficult-to-reverse action, restate the effect and obtain explicit user direction.
+- During implementation, report progress at meaningful checkpoints such as completion of persistence, services, UI integration, and tests. Report unexpected findings or scope changes before continuing into affected work.
+- At the end of a milestone, report what changed, what was verified, what remains unresolved, and any checks that could not run. Ask whether to commit unless the user already requested a commit.
+- Keep questions focused. State the decision needed, give a recommendation with its main tradeoff, and preferably resolve one product decision at a time.
+- Routine implementation details that are already determined by approved documentation and do not alter behavior or architecture may proceed without additional confirmation.
+
 ## Build and dependency rules
 
 - Use C++20 and Qt 6.11.2 on every supported platform.
@@ -80,6 +99,11 @@ Read `doc/README.md` before making product or architectural changes. Treat the d
 
 ## Documentation
 
+- Maintain a single source of truth for every durable decision. Define a product rule, identifier, version, algorithm, format list, schema convention, or other shared constant in one canonical topic document only.
+- Prefer links to canonical documents over copying their values or restating their full rules. A milestone document should describe which canonical rules it implements, plus milestone-specific scope and acceptance criteria; it should not redefine those rules.
+- Keep summaries brief when context requires them, and label the canonical document explicitly. Do not let a summary become a second normative specification.
+- Before adding a decision to a document, identify its canonical owner. If no suitable document exists, create a focused topic document and link it from `doc/README.md` rather than distributing the decision across milestone files.
+- When a canonical decision changes, update its owner and then check all references for consistency. Search the documentation for duplicated literal values and remove stale copies where practical.
 - Update the relevant document when a product, platform, dependency, packaging, licensing, or architectural decision changes.
 - Remove a resolved item from `doc/open-questions.md` and record the decision in the appropriate topic document.
 - Keep documentation concise and describe current behavior or an explicit decision. Clearly label proposals and unresolved items.

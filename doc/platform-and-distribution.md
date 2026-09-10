@@ -26,6 +26,17 @@
 
 Fedora 42 已结束上游维护，但保留为 RPM 二进制兼容基线。发行测试还应覆盖发布时仍受 Fedora 维护的版本。
 
+## 项目标识
+
+- 组织名称：`timeofmei`
+- 组织域名：`timeofmei.com`
+- Qt application name：`MNCE`
+- 应用 ID：`com.timeofmei.mnce`
+- 发行包基础名：`mnce`
+- SQLite 数据库文件名：`mnce.sqlite3`
+
+应用必须在创建依赖数据位置的对象前设置上述 Qt 组织和应用信息。SQLite 数据库默认放在 Qt `QStandardPaths::AppLocalDataLocation` 返回的目录中，不写入程序安装目录或当前工作目录。
+
 ## 发行包
 
 - Windows：安装版 `.msi` 和便携版 `.zip`
