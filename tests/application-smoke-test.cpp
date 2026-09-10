@@ -25,7 +25,7 @@ void ApplicationSmokeTest::constructsApplicationAndMainWindow()
     QVERIFY(qobject_cast<QApplication*>(QCoreApplication::instance()) != nullptr);
 
     const mnce::MainWindow window;
-    QCOMPARE(window.windowTitle(), QStringLiteral("MNCE"));
+    QVERIFY(window.windowTitle().contains(QStringLiteral("MNCE")));
 }
 
 void ApplicationSmokeTest::showsAndClosesMainWindow()

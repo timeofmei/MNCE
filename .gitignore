@@ -52,6 +52,9 @@ Testing/
 *.sqlite
 *.sqlite-wal
 *.sqlite-shm
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
 
 # Whisper models and partial downloads
 *.bin
