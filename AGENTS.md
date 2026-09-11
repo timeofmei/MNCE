@@ -14,7 +14,7 @@ The current technical baseline is:
 - SQLite
 - whisper.cpp
 - FFmpeg
-- GPLv3
+- MIT
 
 Read `doc/README.md` before making product or architectural changes. Treat the documents linked from it as the current source of truth. A decision recorded in the documentation takes precedence over an assumption in code or a generic convention.
 
@@ -55,7 +55,7 @@ Do not work through an entire milestone silently. Keep the user involved at the 
 - Keep third-party versions, source revisions, checksums, patches, and build options reproducible and explicit.
 - Do not download a moving branch such as `main` as part of a release build.
 - Do not commit Whisper model binaries, generated build trees, IDE caches, packaged artifacts, or user databases.
-- FFmpeg release configurations must not enable `nonfree` components. Preserve all required GPL, LGPL, MIT, and third-party notices.
+- Production releases must dynamically link Qt and FFmpeg under their LGPL-compatible paths. Project-built FFmpeg configurations must not enable `gpl` or `nonfree` components. Preserve all required GPL, LGPL, MIT, and third-party notices.
 - Production code must not assume that a GPU is available. CPU-only transcription remains a supported path.
 - Keep long-running work such as hashing, downloading, decoding, and transcription off the UI thread.
 

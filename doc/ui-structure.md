@@ -38,7 +38,7 @@ MVP 设置范围包括：
 - DeepSeek API Key
 - 自定义 OpenAI-compatible 服务配置
 - 推理与 FFmpeg 基本信息
-- 关于、GPLv3 和第三方许可证
+- 关于、MIT、LGPLv3 和第三方许可证
 - 缓存及应用数据清理
 
 界面只提供中文，不设置界面语言切换项。
