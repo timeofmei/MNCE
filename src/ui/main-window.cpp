@@ -742,7 +742,6 @@ struct MainWindow::Impl
     {
         selectedSeriesId = seriesId;
         reloadSeriesDetail();
-        startSelectedSeriesRefresh();
     }
 
     void startSelectedSeriesRefresh()

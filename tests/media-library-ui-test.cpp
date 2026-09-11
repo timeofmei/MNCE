@@ -386,6 +386,7 @@ void MediaLibraryUiTest::sortsAllListsAndRestoresPreferences()
         const QRect nameCell = seriesTable->visualItemRect(seriesTable->item(0, 0));
         QTest::mouseClick(seriesTable->viewport(), Qt::LeftButton, Qt::NoModifier,
                           nameCell.center());
+        QVERIFY(seriesTable->isEnabled());
         QTRY_COMPARE(mediaTable->rowCount(), 2);
         QCOMPARE(mediaTable->item(0, 0)->text(), QStringLiteral("part2.mp3"));
         mediaDirection->setCurrentIndex(mediaDirection->findData(QStringLiteral("descending")));
