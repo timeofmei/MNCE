@@ -12,6 +12,8 @@ class QWidget;
 
 namespace mnce {
 
+class PlaybackBackend;
+
 enum class UserMessageKind { Information, Warning, Critical };
 
 class LibraryUiDialogs
@@ -36,6 +38,10 @@ public:
     MainWindow(TargetLanguageCatalog catalog, QWidget* parent = nullptr);
     MainWindow(TargetLanguageCatalog catalog,
                std::shared_ptr<LibraryUiDialogs> dialogs,
+               QWidget* parent = nullptr);
+    MainWindow(TargetLanguageCatalog catalog,
+               std::shared_ptr<LibraryUiDialogs> dialogs,
+               std::unique_ptr<PlaybackBackend> playbackBackend,
                QWidget* parent = nullptr);
     ~MainWindow() override;
 

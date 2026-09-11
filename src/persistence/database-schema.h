@@ -5,7 +5,7 @@
 
 namespace mnce {
 
-inline constexpr int supportedSchemaVersion = 2;
+inline constexpr int supportedSchemaVersion = 3;
 
 [[nodiscard]] bool initializeDatabaseSchema(QSqlDatabase& database, QString* error);
 

@@ -227,11 +227,11 @@ void MediaLibraryUiTest::missingRecordActionsHaveEnoughSpace()
     auto* table = window.findChild<QTableWidget*>(QStringLiteral("mediaTable"));
     QVERIFY(table != nullptr);
     QCOMPARE(table->rowCount(), 1);
-    auto* actions = table->cellWidget(0, 4);
+    auto* actions = table->cellWidget(0, 5);
     QVERIFY(actions != nullptr);
     const auto buttons = actions->findChildren<QPushButton*>();
     QCOMPARE(buttons.size(), 2);
-    QVERIFY(table->columnWidth(4) >= actions->minimumWidth());
+    QVERIFY(table->columnWidth(5) >= actions->minimumWidth());
     for (const auto* button : buttons) {
         QVERIFY(button->width() >= button->sizeHint().width());
     }
@@ -286,7 +286,7 @@ void MediaLibraryUiTest::createsAndRefreshesSeriesThroughTheWindow()
     for (int row = 0; row < mediaTable->rowCount(); ++row) {
         missingFound = missingFound
             || (mediaTable->item(row, 0)->text() == QStringLiteral("lesson2.mp3")
-                && mediaTable->item(row, 1)->text() == QStringLiteral("文件缺失"));
+                && mediaTable->item(row, 2)->text() == QStringLiteral("文件缺失"));
         newFound = newFound
             || mediaTable->item(row, 0)->text() == QStringLiteral("lesson3.opus");
     }

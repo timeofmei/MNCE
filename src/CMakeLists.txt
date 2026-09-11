@@ -5,6 +5,8 @@ add_library(mnce_domain STATIC
     domain/media-series.h
     domain/natural-sort.cpp
     domain/natural-sort.h
+    domain/playback.cpp
+    domain/playback.h
     domain/target-language.cpp
     domain/target-language.h
 )
@@ -35,6 +37,11 @@ add_library(mnce_services STATIC
     services/media-import-service.h
     services/media-refresh-service.cpp
     services/media-refresh-service.h
+    services/playback-backend.h
+    services/player-controller.cpp
+    services/player-controller.h
+    services/qt-playback-backend.cpp
+    services/qt-playback-backend.h
     services/series-scan-service.cpp
     services/series-scan-service.h
     services/series-service.cpp
@@ -43,12 +50,15 @@ add_library(mnce_services STATIC
 target_link_libraries(
     mnce_services
     PUBLIC mnce_domain mnce_persistence Qt6::Core
+    PRIVATE Qt6::Multimedia
     PRIVATE mnce_project_options
 )
 target_include_directories(mnce_services PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
-set_target_properties(mnce_services PROPERTIES CXX_EXTENSIONS OFF)
+set_target_properties(mnce_services PROPERTIES AUTOMOC ON CXX_EXTENSIONS OFF)
 
 add_library(mnce_ui STATIC
+    ui/media-detail-widget.cpp
+    ui/media-detail-widget.h
     ui/main-window.cpp
     ui/main-window.h
 )

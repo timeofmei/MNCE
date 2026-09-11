@@ -21,7 +21,7 @@ struct InsertMediaResult
 class MediaRepository
 {
 public:
-    static constexpr int supportedSchemaVersion = 2;
+    static constexpr int supportedSchemaVersion = 3;
 
     explicit MediaRepository(const TargetLanguageCatalog& catalog);
     ~MediaRepository();
@@ -39,6 +39,8 @@ public:
                                                      QString* error = nullptr) const;
     [[nodiscard]] QVector<MediaItem> allItems(QString* error = nullptr) const;
     [[nodiscard]] bool setFileState(qint64 id, FileState state, QString* error = nullptr);
+    [[nodiscard]] bool updateDuration(qint64 id, std::optional<qint64> durationMs,
+                                      QString* error = nullptr);
     [[nodiscard]] bool relocate(qint64 id,
                                 const QString& absolutePath,
                                 const QString& displayName,

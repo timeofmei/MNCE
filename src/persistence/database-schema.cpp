@@ -35,6 +35,7 @@ bool createMediaItems(QSqlQuery& query, QString* error)
         "target_language_id TEXT NOT NULL,"
         "file_state TEXT NOT NULL CHECK (file_state IN ('available', 'missing')),"
         "transcription_state TEXT NOT NULL CHECK (transcription_state IN ('not_started')),"
+        "duration_ms INTEGER NULL CHECK (duration_ms >= 0),"
         "created_at TEXT NOT NULL,"
         "updated_at TEXT NOT NULL,"
         "UNIQUE (target_language_id, content_hash)"
@@ -65,6 +66,7 @@ bool createSeriesSchema(QSqlQuery& query, QString* error)
                "display_name TEXT NOT NULL,"
                "file_state TEXT NOT NULL CHECK (file_state IN ('available', 'missing')),"
                "transcription_state TEXT NOT NULL CHECK (transcription_state IN ('not_started')),"
+               "duration_ms INTEGER NULL CHECK (duration_ms >= 0),"
                "created_at TEXT NOT NULL,"
                "updated_at TEXT NOT NULL,"
                "UNIQUE (series_id, content_hash)"
@@ -74,6 +76,23 @@ bool createSeriesSchema(QSqlQuery& query, QString* error)
                "ON media_series(target_language_id, created_at, id)"), error)
         && execute(query, QStringLiteral(
                "CREATE INDEX idx_series_media_series ON series_media_items(series_id)"), error);
+}
+
+bool addDurationColumns(QSqlQuery& query, QString* error)
+{
+    return execute(query, QStringLiteral(
+               "ALTER TABLE media_items ADD COLUMN duration_ms INTEGER NULL "
+               "CHECK (duration_ms >= 0)"), error)
+        && execute(query, QStringLiteral(
+               "ALTER TABLE series_media_items ADD COLUMN duration_ms INTEGER NULL "
+               "CHECK (duration_ms >= 0)"), error);
+}
+
+bool addMediaItemDurationColumn(QSqlQuery& query, QString* error)
+{
+    return execute(query, QStringLiteral(
+        "ALTER TABLE media_items ADD COLUMN duration_ms INTEGER NULL "
+        "CHECK (duration_ms >= 0)"), error);
 }
 
 } // namespace
@@ -110,11 +129,16 @@ bool initializeDatabaseSchema(QSqlDatabase& database, QString* error)
     if (version == 0) {
         succeeded = createMediaItems(query, error);
     }
-    if (succeeded) {
+    if (succeeded && version <= 1) {
         succeeded = createSeriesSchema(query, error);
     }
+    if (succeeded && version == 1) {
+        succeeded = addMediaItemDurationColumn(query, error);
+    } else if (succeeded && version == 2) {
+        succeeded = addDurationColumns(query, error);
+    }
     if (succeeded) {
-        succeeded = execute(query, QStringLiteral("PRAGMA user_version = 2"), error);
+        succeeded = execute(query, QStringLiteral("PRAGMA user_version = 3"), error);
     }
     if (!succeeded || !database.commit()) {
         if (succeeded && error != nullptr) {

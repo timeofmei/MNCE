@@ -51,6 +51,9 @@ public:
                             QString* error = nullptr) const;
     [[nodiscard]] QVector<SeriesMediaItem> mediaForSeries(qint64 seriesId,
                                                           QString* error = nullptr) const;
+    [[nodiscard]] bool updateMediaDuration(qint64 mediaId,
+                                           std::optional<qint64> durationMs,
+                                           QString* error = nullptr);
     [[nodiscard]] SeriesWriteResult applyRefresh(qint64 seriesId,
                                                  const QVector<SeriesFileSnapshot>& files);
     [[nodiscard]] SeriesWriteResult relocate(qint64 seriesId,

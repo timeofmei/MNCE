@@ -150,7 +150,7 @@ void SeriesServiceTest::migratesVersionOneAndPreservesSingleFiles()
     mnce::SeriesRepository repository(catalog);
     QString error;
     QVERIFY2(repository.open(path, &error), qPrintable(error));
-    QCOMPARE(userVersion(path), 2);
+    QCOMPARE(userVersion(path), 3);
     repository.close();
 
     mnce::MediaRepository singles(catalog);
@@ -161,7 +161,7 @@ void SeriesServiceTest::migratesVersionOneAndPreservesSingleFiles()
     singles.close();
 
     QVERIFY2(repository.open(path, &error), qPrintable(error));
-    QCOMPARE(userVersion(path), 2);
+    QCOMPARE(userVersion(path), 3);
 }
 
 void SeriesServiceTest::failedMigrationRollsBack()

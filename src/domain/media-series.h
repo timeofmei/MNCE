@@ -34,6 +34,7 @@ struct SeriesMediaItem
     QString displayName;
     FileState fileState = FileState::Available;
     TranscriptionState transcriptionState = TranscriptionState::NotStarted;
+    std::optional<qint64> durationMs;
     QDateTime createdAt;
     QDateTime updatedAt;
 };

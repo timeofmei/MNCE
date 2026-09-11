@@ -30,8 +30,11 @@ MediaItem itemFromQuery(const QSqlQuery& query, bool* valid)
     *valid = fileStateFromDatabase(query.value(6).toString(), &item.fileState)
         && transcriptionStateFromDatabase(query.value(7).toString(),
                                           &item.transcriptionState);
-    item.createdAt = QDateTime::fromString(query.value(8).toString(), Qt::ISODateWithMs);
-    item.updatedAt = QDateTime::fromString(query.value(9).toString(), Qt::ISODateWithMs);
+    if (!query.value(8).isNull()) {
+        item.durationMs = query.value(8).toLongLong();
+    }
+    item.createdAt = QDateTime::fromString(query.value(9).toString(), Qt::ISODateWithMs);
+    item.updatedAt = QDateTime::fromString(query.value(10).toString(), Qt::ISODateWithMs);
     return item;
 }
 
@@ -152,7 +155,8 @@ QVector<MediaItem> MediaRepository::itemsForLanguage(const QString& languageId,
 {
     return queryItems(QStringLiteral(
                           "SELECT id, content_hash, file_size, current_path, display_name, "
-                          "target_language_id, file_state, transcription_state, created_at, updated_at "
+                          "target_language_id, file_state, transcription_state, duration_ms, "
+                          "created_at, updated_at "
                           "FROM media_items WHERE target_language_id = ? ORDER BY id"),
                       {languageId}, error);
 }
@@ -161,7 +165,8 @@ QVector<MediaItem> MediaRepository::allItems(QString* error) const
 {
     return queryItems(QStringLiteral(
                           "SELECT id, content_hash, file_size, current_path, display_name, "
-                          "target_language_id, file_state, transcription_state, created_at, updated_at "
+                          "target_language_id, file_state, transcription_state, duration_ms, "
+                          "created_at, updated_at "
                           "FROM media_items ORDER BY id"),
                       {}, error);
 }
@@ -207,6 +212,35 @@ bool MediaRepository::setFileState(qint64 id, FileState state, QString* error)
     if (!query.exec() || query.numRowsAffected() != 1) {
         if (error != nullptr) {
             *error = queryError(QStringLiteral("更新文件状态失败"), query);
+        }
+        return false;
+    }
+    return true;
+}
+
+bool MediaRepository::updateDuration(qint64 id, std::optional<qint64> durationMs, QString* error)
+{
+    if (durationMs.has_value() && *durationMs < 0) {
+        if (error != nullptr) {
+            *error = QStringLiteral("媒体时长不能小于零");
+        }
+        return false;
+    }
+    QSqlQuery query(database_);
+    query.prepare(QStringLiteral(
+        "UPDATE media_items SET duration_ms = ?, updated_at = ? WHERE id = ?"));
+    query.addBindValue(durationMs.has_value() ? QVariant::fromValue(*durationMs) : QVariant());
+    query.addBindValue(QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs));
+    query.addBindValue(id);
+    if (!query.exec()) {
+        if (error != nullptr) {
+            *error = queryError(QStringLiteral("更新媒体时长失败"), query);
+        }
+        return false;
+    }
+    if (query.numRowsAffected() != 1) {
+        if (error != nullptr) {
+            *error = QStringLiteral("媒体不存在");
         }
         return false;
     }

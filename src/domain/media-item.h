@@ -4,6 +4,8 @@
 #include <QDateTime>
 #include <QString>
 
+#include <optional>
+
 namespace mnce {
 
 enum class FileState { Available, Missing };
@@ -19,6 +21,7 @@ struct MediaItem
     QString targetLanguageId;
     FileState fileState = FileState::Available;
     TranscriptionState transcriptionState = TranscriptionState::NotStarted;
+    std::optional<qint64> durationMs;
     QDateTime createdAt;
     QDateTime updatedAt;
 };

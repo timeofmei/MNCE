@@ -8,7 +8,10 @@
 #include "services/file-hash-service.h"
 #include "services/media-import-service.h"
 #include "services/media-refresh-service.h"
+#include "services/player-controller.h"
+#include "services/qt-playback-backend.h"
 #include "services/series-service.h"
+#include "ui/media-detail-widget.h"
 
 #include <QCloseEvent>
 #include <QComboBox>
@@ -25,6 +28,7 @@
 #include <QPushButton>
 #include <QSettings>
 #include <QSignalBlocker>
+#include <QStackedWidget>
 #include <QTableWidget>
 #include <QTabWidget>
 #include <QVBoxLayout>
@@ -43,6 +47,7 @@ constexpr auto singleSortDirectionSetting = "library/singleFiles/sortDirection";
 constexpr auto seriesSortFieldSetting = "library/series/sortField";
 constexpr auto seriesSortDirectionSetting = "library/series/sortDirection";
 constexpr auto seriesMediaSortDirectionSetting = "library/seriesMedia/sortDirection";
+constexpr auto playbackRateSetting = "playback/rate";
 
 QString audioFilter()
 {
@@ -52,6 +57,12 @@ QString audioFilter()
 bool hasSupportedExtension(const QString& path)
 {
     return SeriesScanService::isSupportedAudioFile(path);
+}
+
+std::unique_ptr<PlaybackBackend> ensurePlaybackBackend(
+    std::unique_ptr<PlaybackBackend> backend)
+{
+    return backend ? std::move(backend) : std::make_unique<QtPlaybackBackend>();
 }
 
 QString hashFailureMessage(const FileHashResult& result)
@@ -164,16 +175,25 @@ struct MainWindow::Impl
     };
 
     explicit Impl(MainWindow* owner, TargetLanguageCatalog languageCatalog,
-                  std::shared_ptr<LibraryUiDialogs> uiDialogs)
+                  std::shared_ptr<LibraryUiDialogs> uiDialogs,
+                  std::unique_ptr<PlaybackBackend> audioBackend)
         : window(owner)
         , catalog(std::move(languageCatalog))
         , repository(catalog)
         , seriesRepository(catalog)
         , dialogs(std::move(uiDialogs))
+        , playbackBackend(ensurePlaybackBackend(std::move(audioBackend)))
+        , playerController(std::make_unique<PlayerController>(*playbackBackend))
     {
         buildUi();
         QObject::connect(&watcher, &QFutureWatcher<TaskResult>::finished, window,
                          [this] { finishTask(); });
+        QObject::connect(playerController.get(), &PlayerController::snapshotChanged, window,
+                         [this] { detailWidget->updatePlayback(*playerController); });
+        QObject::connect(playerController.get(), &PlayerController::durationDiscovered, window,
+                         [this](const MediaSourceReference& source, qint64 duration) {
+                             persistDuration(source, duration);
+                         });
     }
 
     void buildUi()
@@ -194,15 +214,42 @@ struct MainWindow::Impl
         toolbar->addStretch();
         root->addLayout(toolbar);
 
-        tabs = new QTabWidget(central);
+        pages = new QStackedWidget(central);
+        pages->setObjectName(QStringLiteral("mainPages"));
+        libraryPage = new QWidget(pages);
+        auto* libraryLayout = new QVBoxLayout(libraryPage);
+        libraryLayout->setContentsMargins(0, 0, 0, 0);
+        tabs = new QTabWidget(libraryPage);
         tabs->setObjectName(QStringLiteral("libraryTabs"));
         buildSingleFilesTab();
         buildSeriesTab();
-        root->addWidget(tabs);
+        libraryLayout->addWidget(tabs);
+        pages->addWidget(libraryPage);
+        detailWidget = new MediaDetailWidget(pages);
+        pages->addWidget(detailWidget);
+        root->addWidget(pages);
         window->setCentralWidget(central);
+
+        QObject::connect(detailWidget, &MediaDetailWidget::backRequested, window,
+                         [this] { leaveMediaDetail(); });
+        QObject::connect(detailWidget, &MediaDetailWidget::playRequested, window,
+                         [this] { (void) playerController->play(); });
+        QObject::connect(detailWidget, &MediaDetailWidget::pauseRequested, window,
+                         [this] { (void) playerController->pause(); });
+        QObject::connect(detailWidget, &MediaDetailWidget::seekRequested, window,
+                         [this](qint64 position) { (void) playerController->seek(position); });
+        QObject::connect(detailWidget, &MediaDetailWidget::playbackRateChanged, window,
+                         [this](qreal rate) {
+                             if (playerController->setPlaybackRate(rate)) {
+                                 saveSetting(playbackRateSetting, rate);
+                             }
+                         });
+        QObject::connect(detailWidget, &MediaDetailWidget::relocateRequested, window,
+                         [this] { relocateCurrentMedia(); });
 
         QObject::connect(languageCombo, &QComboBox::currentIndexChanged, window,
                          [this](int) {
+                             leaveMediaDetail();
                              saveSetting(currentLanguageSetting, currentLanguageId());
                              selectedSeriesId = 0;
                              reloadAll();
@@ -231,11 +278,11 @@ struct MainWindow::Impl
 
         table = new QTableWidget(page);
         table->setObjectName(QStringLiteral("mediaTable"));
-        table->setColumnCount(5);
-        table->setHorizontalHeaderLabels({QStringLiteral("文件名"), QStringLiteral("目标语言"),
-                                          QStringLiteral("文件状态"), QStringLiteral("识别状态"),
-                                          QStringLiteral("操作")});
-        configureTable(table, 4, 220);
+        table->setColumnCount(6);
+        table->setHorizontalHeaderLabels({QStringLiteral("文件名"), QStringLiteral("时长"),
+                                          QStringLiteral("目标语言"), QStringLiteral("文件状态"),
+                                          QStringLiteral("识别状态"), QStringLiteral("操作")});
+        configureTable(table, 5, 220);
         layout->addWidget(table);
         tabs->addTab(page, QStringLiteral("单文件"));
 
@@ -247,6 +294,13 @@ struct MainWindow::Impl
                          [this](int) { saveSortPreferences(); reloadSingleTable(); });
         QObject::connect(singleSortDirectionCombo, &QComboBox::currentIndexChanged, window,
                          [this](int) { saveSortPreferences(); reloadSingleTable(); });
+        QObject::connect(table, &QTableWidget::cellClicked, window,
+                         [this](int row, int column) {
+                             if (column != 0) return;
+                             const auto* cell = table->item(row, 0);
+                             if (cell == nullptr) return;
+                             openSingleMedia(cell->data(Qt::UserRole).toLongLong());
+                         });
     }
 
     void buildSeriesTab()
@@ -300,8 +354,9 @@ struct MainWindow::Impl
         detailLayout->addWidget(seriesDirectoryLabel);
         seriesMediaTable = new QTableWidget(seriesDetail);
         seriesMediaTable->setObjectName(QStringLiteral("seriesMediaTable"));
-        seriesMediaTable->setColumnCount(3);
-        seriesMediaTable->setHorizontalHeaderLabels({QStringLiteral("文件名"), QStringLiteral("文件状态"),
+        seriesMediaTable->setColumnCount(4);
+        seriesMediaTable->setHorizontalHeaderLabels({QStringLiteral("文件名"), QStringLiteral("时长"),
+                                                     QStringLiteral("文件状态"),
                                                      QStringLiteral("识别状态")});
         configureTable(seriesMediaTable);
         detailLayout->addWidget(seriesMediaTable);
@@ -330,6 +385,13 @@ struct MainWindow::Impl
                              if (item != nullptr) {
                                  openSeries(item->data(Qt::UserRole).toLongLong());
                              }
+                         });
+        QObject::connect(seriesMediaTable, &QTableWidget::cellClicked, window,
+                         [this](int row, int column) {
+                             if (column != 0) return;
+                             const auto* cell = seriesMediaTable->item(row, 0);
+                             if (cell == nullptr) return;
+                             openSeriesMedia(cell->data(Qt::UserRole).toLongLong());
                          });
     }
 
@@ -471,12 +533,15 @@ struct MainWindow::Impl
             auto* name = new QTableWidgetItem(item.displayName);
             name->setData(Qt::UserRole, item.id);
             name->setToolTip(item.currentPath);
+            name->setForeground(window->palette().link());
             table->setItem(row, 0, name);
-            table->setItem(row, 1, new QTableWidgetItem(languageName(item.targetLanguageId)));
-            table->setItem(row, 2, new QTableWidgetItem(
+            table->setItem(row, 1, new QTableWidgetItem(
+                item.durationMs ? formatPlaybackTime(*item.durationMs) : QStringLiteral("—")));
+            table->setItem(row, 2, new QTableWidgetItem(languageName(item.targetLanguageId)));
+            table->setItem(row, 3, new QTableWidgetItem(
                 item.fileState == FileState::Available ? QStringLiteral("可用")
                                                        : QStringLiteral("文件缺失")));
-            table->setItem(row, 3, new QTableWidgetItem(QStringLiteral("未识别")));
+            table->setItem(row, 4, new QTableWidgetItem(QStringLiteral("未识别")));
             auto* actions = new QWidget(table);
             actions->setMinimumWidth(210);
             auto* actionLayout = new QHBoxLayout(actions);
@@ -491,7 +556,7 @@ struct MainWindow::Impl
             actionLayout->addWidget(remove);
             QObject::connect(remove, &QPushButton::clicked, window,
                              [this, id = item.id] { removeItem(id); });
-            table->setCellWidget(row, 4, actions);
+            table->setCellWidget(row, 5, actions);
             if (item.id == selectedId) {
                 table->scrollToItem(name);
             }
@@ -592,11 +657,14 @@ struct MainWindow::Impl
             auto* name = new QTableWidgetItem(item.displayName);
             name->setData(Qt::UserRole, item.id);
             name->setToolTip(item.currentPath);
+            name->setForeground(window->palette().link());
             seriesMediaTable->setItem(row, 0, name);
             seriesMediaTable->setItem(row, 1, new QTableWidgetItem(
+                item.durationMs ? formatPlaybackTime(*item.durationMs) : QStringLiteral("—")));
+            seriesMediaTable->setItem(row, 2, new QTableWidgetItem(
                 item.fileState == FileState::Available ? QStringLiteral("可用")
                                                        : QStringLiteral("文件缺失")));
-            seriesMediaTable->setItem(row, 2, new QTableWidgetItem(QStringLiteral("未识别")));
+            seriesMediaTable->setItem(row, 3, new QTableWidgetItem(QStringLiteral("未识别")));
         }
         seriesDetail->show();
     }
@@ -744,6 +812,114 @@ struct MainWindow::Impl
         reloadSeriesDetail();
     }
 
+    void openSingleMedia(qint64 mediaId)
+    {
+        QString error;
+        const auto items = repository.itemsForLanguage(currentLanguageId(), &error);
+        if (!error.isEmpty()) {
+            showMessage(UserMessageKind::Critical, QStringLiteral("读取失败"), error);
+            return;
+        }
+        const auto found = std::find_if(items.cbegin(), items.cend(), [mediaId](const auto& item) {
+            return item.id == mediaId;
+        });
+        if (found == items.cend()) return;
+        detailSingleItem = *found;
+        detailSeriesItem.reset();
+        showMediaDetail({MediaSourceKind::SingleFile, found->id, found->currentPath,
+                         found->fileState == FileState::Available, found->durationMs},
+                        found->displayName, found->targetLanguageId,
+                        found->fileState == FileState::Available);
+    }
+
+    void openSeriesMedia(qint64 mediaId)
+    {
+        QString error;
+        const auto items = seriesRepository.mediaForSeries(selectedSeriesId, &error);
+        if (!error.isEmpty()) {
+            showMessage(UserMessageKind::Critical, QStringLiteral("读取失败"), error);
+            return;
+        }
+        const auto found = std::find_if(items.cbegin(), items.cend(), [mediaId](const auto& item) {
+            return item.id == mediaId;
+        });
+        if (found == items.cend()) return;
+        MediaSeries series;
+        if (!seriesRepository.find(found->seriesId, &series, &error)) {
+            showMessage(UserMessageKind::Critical, QStringLiteral("读取失败"), error);
+            return;
+        }
+        selectedSeriesId = found->seriesId;
+        detailSingleItem.reset();
+        detailSeriesItem = *found;
+        showMediaDetail({MediaSourceKind::SeriesItem, found->id, found->currentPath,
+                         found->fileState == FileState::Available, found->durationMs},
+                        found->displayName, series.targetLanguageId,
+                        found->fileState == FileState::Available);
+    }
+
+    void showMediaDetail(const MediaSourceReference& source, const QString& displayName,
+                         const QString& languageId, bool available)
+    {
+        currentDetail = MediaDetailData{source, displayName, languageName(languageId),
+                                        available ? QStringLiteral("可用")
+                                                  : QStringLiteral("文件缺失"),
+                                        QStringLiteral("未识别")};
+        detailWidget->setMedia(*currentDetail);
+        pages->setCurrentWidget(detailWidget);
+        window->setWindowTitle(QStringLiteral("%1 — MNCE").arg(displayName));
+        playerController->load(source);
+        detailWidget->updatePlayback(*playerController);
+    }
+
+    void leaveMediaDetail()
+    {
+        if (playerController) playerController->unload();
+        currentDetail.reset();
+        detailSingleItem.reset();
+        detailSeriesItem.reset();
+        if (pages) pages->setCurrentWidget(libraryPage);
+        window->setWindowTitle(QStringLiteral("MNCE 媒体库"));
+    }
+
+    void relocateCurrentMedia()
+    {
+        if (detailSingleItem) {
+            chooseSingleRelocation(*detailSingleItem);
+        } else if (detailSeriesItem && selectedSeriesId != 0) {
+            chooseSeriesRelocation();
+        }
+    }
+
+    void persistDuration(const MediaSourceReference& source, qint64 duration)
+    {
+        QString error;
+        const bool saved = source.kind == MediaSourceKind::SingleFile
+            ? repository.updateDuration(source.mediaId, duration, &error)
+            : seriesRepository.updateMediaDuration(source.mediaId, duration, &error);
+        if (!saved) {
+            showMessage(UserMessageKind::Critical, QStringLiteral("保存时长失败"), error);
+            return;
+        }
+        if (source.kind == MediaSourceKind::SingleFile) {
+            reloadSingleTable(source.mediaId);
+            if (detailSingleItem && detailSingleItem->id == source.mediaId) {
+                detailSingleItem->durationMs = duration;
+            }
+        } else {
+            reloadSeriesDetail();
+            if (detailSeriesItem && detailSeriesItem->id == source.mediaId) {
+                detailSeriesItem->durationMs = duration;
+            }
+        }
+        if (currentDetail && currentDetail->source.kind == source.kind
+            && currentDetail->source.mediaId == source.mediaId) {
+            currentDetail->source.knownDurationMs = duration;
+            detailWidget->setMedia(*currentDetail);
+            detailWidget->updatePlayback(*playerController);
+        }
+    }
+
     void startSelectedSeriesRefresh()
     {
         if (watcher.isRunning() || selectedSeriesId == 0) {
@@ -840,6 +1016,9 @@ struct MainWindow::Impl
             return;
         }
         reloadSingleTable(task.original.id);
+        if (detailSingleItem && detailSingleItem->id == task.original.id) {
+            openSingleMedia(task.original.id);
+        }
         showMessage(UserMessageKind::Information, QStringLiteral("重新定位完成"),
                     QStringLiteral("媒体文件路径已更新。"));
     }
@@ -855,6 +1034,7 @@ struct MainWindow::Impl
 
     void finishSeriesTask(const TaskResult& task)
     {
+        const qint64 detailMediaId = detailSeriesItem ? detailSeriesItem->id : 0;
         const auto applied = seriesService.apply(seriesRepository, task.seriesOperation);
         if (!applied.succeeded()) {
             showMessage(applied.status == SeriesOperationStatus::ScanFailed
@@ -870,6 +1050,9 @@ struct MainWindow::Impl
         }
         reloadSeriesTable();
         reloadSeriesDetail();
+        if (detailMediaId != 0) {
+            openSeriesMedia(detailMediaId);
+        }
     }
 
     void removeItem(qint64 id)
@@ -906,6 +1089,7 @@ struct MainWindow::Impl
 
     void stopAndWait()
     {
+        playerController->shutdown();
         closing = true;
         stopRequested.store(true);
         if (watcher.isRunning()) {
@@ -923,7 +1107,12 @@ struct MainWindow::Impl
     MediaRefreshService refreshService;
     SeriesService seriesService;
     std::unique_ptr<QSettings> settings;
+    std::unique_ptr<PlaybackBackend> playbackBackend;
+    std::unique_ptr<PlayerController> playerController;
     QComboBox* languageCombo = nullptr;
+    QStackedWidget* pages = nullptr;
+    QWidget* libraryPage = nullptr;
+    MediaDetailWidget* detailWidget = nullptr;
     QTabWidget* tabs = nullptr;
     QPushButton* addButton = nullptr;
     QPushButton* singleRefreshButton = nullptr;
@@ -944,25 +1133,40 @@ struct MainWindow::Impl
     QFutureWatcher<TaskResult> watcher;
     std::atomic_bool stopRequested = false;
     qint64 selectedSeriesId = 0;
+    std::optional<MediaDetailData> currentDetail;
+    std::optional<MediaItem> detailSingleItem;
+    std::optional<SeriesMediaItem> detailSeriesItem;
     bool closing = false;
 };
 
 MainWindow::MainWindow(QWidget* parent)
     : MainWindow(TargetLanguageCatalog::builtIn(),
-                 std::make_shared<NativeLibraryUiDialogs>(), parent)
+                 std::make_shared<NativeLibraryUiDialogs>(),
+                 std::make_unique<QtPlaybackBackend>(), parent)
 {
 }
 
 MainWindow::MainWindow(TargetLanguageCatalog catalog, QWidget* parent)
-    : MainWindow(std::move(catalog), std::make_shared<NativeLibraryUiDialogs>(), parent)
+    : MainWindow(std::move(catalog), std::make_shared<NativeLibraryUiDialogs>(),
+                 std::make_unique<QtPlaybackBackend>(), parent)
 {
 }
 
 MainWindow::MainWindow(TargetLanguageCatalog catalog,
                        std::shared_ptr<LibraryUiDialogs> dialogs,
                        QWidget* parent)
+    : MainWindow(std::move(catalog), std::move(dialogs),
+                 std::make_unique<QtPlaybackBackend>(), parent)
+{
+}
+
+MainWindow::MainWindow(TargetLanguageCatalog catalog,
+                       std::shared_ptr<LibraryUiDialogs> dialogs,
+                       std::unique_ptr<PlaybackBackend> playbackBackend,
+                       QWidget* parent)
     : QMainWindow(parent)
-    , impl_(std::make_unique<Impl>(this, std::move(catalog), std::move(dialogs)))
+    , impl_(std::make_unique<Impl>(this, std::move(catalog), std::move(dialogs),
+                                  std::move(playbackBackend)))
 {
 }
 
@@ -988,6 +1192,10 @@ bool MainWindow::initialize(const QString& databasePath,
         impl_->settings = std::make_unique<QSettings>(settingsFilePath, QSettings::IniFormat);
     }
     impl_->restoreSortPreferences();
+    const qreal playbackRate = playbackRateFromSetting(
+        impl_->settings->value(QString::fromLatin1(playbackRateSetting), 1.0));
+    impl_->detailWidget->setPlaybackRate(playbackRate);
+    (void) impl_->playerController->setPlaybackRate(playbackRate);
     QString languageId = impl_->settings->value(
         QString::fromLatin1(currentLanguageSetting), impl_->catalog.defaultLanguageId()).toString();
     if (!impl_->catalog.contains(languageId)) {

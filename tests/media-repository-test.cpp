@@ -78,7 +78,7 @@ void MediaRepositoryTest::createsSchemaAndPreservesDataOnReopen()
         mnce::MediaRepository repository(catalog);
         QString error;
         QVERIFY2(repository.open(databasePath, &error), qPrintable(error));
-        QCOMPARE(readUserVersion(databasePath), 2);
+        QCOMPARE(readUserVersion(databasePath), 3);
         const auto result = repository.insert(makeItem(directory.filePath(QStringLiteral("a.mp3")),
                                                        QStringLiteral("en"), QByteArray(32, 'a'), 10));
         QCOMPARE(result.status, mnce::InsertMediaStatus::Inserted);
@@ -105,7 +105,7 @@ void MediaRepositoryTest::rejectsFutureSchema()
         database.setDatabaseName(path);
         QVERIFY(database.open());
         QSqlQuery query(database);
-        QVERIFY(query.exec(QStringLiteral("PRAGMA user_version = 3")));
+        QVERIFY(query.exec(QStringLiteral("PRAGMA user_version = 4")));
     }
     QSqlDatabase::removeDatabase(connection);
 

@@ -60,8 +60,11 @@ SeriesMediaItem mediaFromQuery(const QSqlQuery& query, bool* valid)
     *valid = fileStateFromDatabase(query.value(6).toString(), &item.fileState)
         && transcriptionStateFromDatabase(query.value(7).toString(),
                                           &item.transcriptionState);
-    item.createdAt = QDateTime::fromString(query.value(8).toString(), Qt::ISODateWithMs);
-    item.updatedAt = QDateTime::fromString(query.value(9).toString(), Qt::ISODateWithMs);
+    if (!query.value(8).isNull()) {
+        item.durationMs = query.value(8).toLongLong();
+    }
+    item.createdAt = QDateTime::fromString(query.value(9).toString(), Qt::ISODateWithMs);
+    item.updatedAt = QDateTime::fromString(query.value(10).toString(), Qt::ISODateWithMs);
     return item;
 }
 
@@ -258,7 +261,7 @@ QVector<SeriesMediaItem> SeriesRepository::mediaForSeries(qint64 seriesId,
     QSqlQuery query(database_);
     query.prepare(QStringLiteral(
         "SELECT id, series_id, content_hash, file_size, current_path, display_name, "
-        "file_state, transcription_state, created_at, updated_at "
+        "file_state, transcription_state, duration_ms, created_at, updated_at "
         "FROM series_media_items WHERE series_id = ? ORDER BY id"));
     query.addBindValue(seriesId);
     if (!query.exec()) {
@@ -279,6 +282,37 @@ QVector<SeriesMediaItem> SeriesRepository::mediaForSeries(qint64 seriesId,
         result.push_back(std::move(item));
     }
     return result;
+}
+
+bool SeriesRepository::updateMediaDuration(qint64 mediaId,
+                                           std::optional<qint64> durationMs,
+                                           QString* error)
+{
+    if (durationMs.has_value() && *durationMs < 0) {
+        if (error != nullptr) {
+            *error = QStringLiteral("媒体时长不能小于零");
+        }
+        return false;
+    }
+    QSqlQuery query(database_);
+    query.prepare(QStringLiteral(
+        "UPDATE series_media_items SET duration_ms = ?, updated_at = ? WHERE id = ?"));
+    query.addBindValue(durationMs.has_value() ? QVariant::fromValue(*durationMs) : QVariant());
+    query.addBindValue(utcNow());
+    query.addBindValue(mediaId);
+    if (!query.exec()) {
+        if (error != nullptr) {
+            *error = queryError(QStringLiteral("更新系列媒体时长失败"), query);
+        }
+        return false;
+    }
+    if (query.numRowsAffected() != 1) {
+        if (error != nullptr) {
+            *error = QStringLiteral("系列媒体不存在");
+        }
+        return false;
+    }
+    return true;
 }
 
 SeriesWriteResult SeriesRepository::applyFilesInTransaction(
