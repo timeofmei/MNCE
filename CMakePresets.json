@@ -37,6 +37,38 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"
       }
+    },
+    {
+      "name": "fedora-base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "BUILD_TESTING": "ON",
+        "CMAKE_CXX_COMPILER": "g++",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "fedora-debug",
+      "displayName": "Fedora GCC Debug",
+      "inherits": "fedora-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "fedora-release",
+      "displayName": "Fedora GCC Release",
+      "inherits": "fedora-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
     }
   ],
   "buildPresets": [
@@ -47,6 +79,14 @@
     {
       "name": "windows-msvc-release",
       "configurePreset": "windows-msvc-release"
+    },
+    {
+      "name": "fedora-debug",
+      "configurePreset": "fedora-debug"
+    },
+    {
+      "name": "fedora-release",
+      "configurePreset": "fedora-release"
     }
   ],
   "testPresets": [
@@ -60,6 +100,20 @@
     {
       "name": "windows-msvc-release",
       "configurePreset": "windows-msvc-release",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "fedora-debug",
+      "configurePreset": "fedora-debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "fedora-release",
+      "configurePreset": "fedora-release",
       "output": {
         "outputOnFailure": true
       }

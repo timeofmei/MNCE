@@ -26,6 +26,8 @@
 
 Fedora 42 已结束上游维护，但保留为 RPM 二进制兼容基线。发行测试还应覆盖发布时仍受 Fedora 维护的版本。
 
+Fedora 开发机的工具链、Qt 安装及本地构建步骤见 [Fedora 开发环境](fedora-development.md)。
+
 ## 项目标识
 
 - 组织名称：`timeofmei`

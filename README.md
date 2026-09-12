@@ -1,10 +1,10 @@
 # MNCE
 
-MNCE（Master New Concept English）是一款以本地音频、本地 Whisper 转写和语言练习为核心的桌面应用。当前工程处于 M1 阶段，只提供可编译、可启动和可测试的 Qt Widgets 应用骨架。
+MNCE（Master New Concept English）是一款以本地音频、本地 Whisper 转写和语言练习为核心的桌面应用。当前工程已完成桌面应用骨架、单文件媒体库、文件夹系列、本地音频播放和 Windows 自定义标题栏等 M1 至 M5 功能。
 
 产品与工程决策见 [`doc/README.md`](doc/README.md)。
 
-## Windows 开发环境
+## Windows
 
 - Windows 11 x86-64
 - Visual Studio Community 2026 的 MSVC x64 工具链
@@ -20,7 +20,7 @@ $env:QT_ROOT = 'C:\Qt\6.11.2\msvc2022_64'
 $env:PATH = "$env:QT_ROOT\bin;$env:PATH"
 ```
 
-## 配置、构建与测试
+### 配置、构建与测试
 
 Debug：
 
@@ -38,7 +38,7 @@ cmake --build --preset windows-msvc-release
 ctest --preset windows-msvc-release
 ```
 
-## 启动应用
+### 启动应用
 
 在保持 Qt 开发环境可用的同一个终端中运行：
 
@@ -56,3 +56,7 @@ Copy-Item .\build\windows-msvc-release\src\mnce.exe .\deploy\
 ```
 
 `windeployqt` 不属于普通编译步骤；`deploy` 目录也不会纳入版本控制。
+
+## Fedora
+
+Fedora 的系统依赖、Qt 6.11.2 配置、Debug/Release 构建、测试、运行及常见问题见 [`doc/fedora-development.md`](doc/fedora-development.md)。
