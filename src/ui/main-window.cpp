@@ -11,7 +11,9 @@
 #include "services/player-controller.h"
 #include "services/qt-playback-backend.h"
 #include "services/series-service.h"
+#include "ui/frameless-window-controller.h"
 #include "ui/media-detail-widget.h"
+#include "ui/window-title-bar.h"
 
 #include <QCloseEvent>
 #include <QComboBox>
@@ -198,14 +200,25 @@ struct MainWindow::Impl
 
     void buildUi()
     {
-        window->setWindowTitle(QStringLiteral("MNCE 媒体库"));
+        window->setWindowTitle(QStringLiteral("MNCE"));
         window->resize(1040, 720);
 
         auto* central = new QWidget(window);
-        auto* root = new QVBoxLayout(central);
+        QWidget* content = central;
+        if (FramelessWindowController::enabledForCurrentPlatform()) {
+            auto* frameLayout = new QVBoxLayout(central);
+            frameLayout->setContentsMargins(0, 0, 0, 0);
+            frameLayout->setSpacing(0);
+            titleBar = new WindowTitleBar(central);
+            frameLayout->addWidget(titleBar);
+            content = new QWidget(central);
+            frameLayout->addWidget(content);
+        }
+
+        auto* root = new QVBoxLayout(content);
         auto* toolbar = new QHBoxLayout;
-        toolbar->addWidget(new QLabel(QStringLiteral("正在学习："), central));
-        languageCombo = new QComboBox(central);
+        toolbar->addWidget(new QLabel(QStringLiteral("正在学习："), content));
+        languageCombo = new QComboBox(content);
         languageCombo->setObjectName(QStringLiteral("targetLanguageCombo"));
         for (const auto& language : catalog.languages()) {
             languageCombo->addItem(language.displayName, language.id);
@@ -214,7 +227,7 @@ struct MainWindow::Impl
         toolbar->addStretch();
         root->addLayout(toolbar);
 
-        pages = new QStackedWidget(central);
+        pages = new QStackedWidget(content);
         pages->setObjectName(QStringLiteral("mainPages"));
         libraryPage = new QWidget(pages);
         auto* libraryLayout = new QVBoxLayout(libraryPage);
@@ -229,6 +242,9 @@ struct MainWindow::Impl
         pages->addWidget(detailWidget);
         root->addWidget(pages);
         window->setCentralWidget(central);
+        if (titleBar != nullptr) {
+            frameController = new FramelessWindowController(window, titleBar, window);
+        }
 
         QObject::connect(detailWidget, &MediaDetailWidget::backRequested, window,
                          [this] { leaveMediaDetail(); });
@@ -879,7 +895,7 @@ struct MainWindow::Impl
         detailSingleItem.reset();
         detailSeriesItem.reset();
         if (pages) pages->setCurrentWidget(libraryPage);
-        window->setWindowTitle(QStringLiteral("MNCE 媒体库"));
+        window->setWindowTitle(QStringLiteral("MNCE"));
     }
 
     void relocateCurrentMedia()
@@ -1109,6 +1125,8 @@ struct MainWindow::Impl
     std::unique_ptr<QSettings> settings;
     std::unique_ptr<PlaybackBackend> playbackBackend;
     std::unique_ptr<PlayerController> playerController;
+    WindowTitleBar* titleBar = nullptr;
+    FramelessWindowController* frameController = nullptr;
     QComboBox* languageCombo = nullptr;
     QStackedWidget* pages = nullptr;
     QWidget* libraryPage = nullptr;

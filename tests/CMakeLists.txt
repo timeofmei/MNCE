@@ -86,13 +86,21 @@ target_link_libraries(
 set_target_properties(media_playback_ui_test PROPERTIES AUTOMOC ON CXX_EXTENSIONS OFF)
 add_test(NAME media_playback_ui_test COMMAND media_playback_ui_test)
 
+add_executable(window_frame_test window-frame-test.cpp)
+target_link_libraries(
+    window_frame_test
+    PRIVATE mnce_project_options mnce_ui Qt6::Core Qt6::Test Qt6::Widgets
+)
+set_target_properties(window_frame_test PROPERTIES AUTOMOC ON CXX_EXTENSIONS OFF)
+add_test(NAME window_frame_test COMMAND window_frame_test)
+
 if(WIN32)
     get_target_property(qt_qmake_executable Qt6::qmake IMPORTED_LOCATION)
     get_filename_component(qt_bin_directory "${qt_qmake_executable}" DIRECTORY)
     set_tests_properties(
         application_smoke_test file_hash_service_test media_repository_test series_service_test
         media_library_ui_test playback_domain_test playback_persistence_test player_controller_test
-        media_playback_ui_test
+        media_playback_ui_test window_frame_test
         PROPERTIES
             ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:${qt_bin_directory}"
     )

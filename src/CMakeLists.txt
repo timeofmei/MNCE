@@ -57,10 +57,14 @@ target_include_directories(mnce_services PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 set_target_properties(mnce_services PROPERTIES AUTOMOC ON CXX_EXTENSIONS OFF)
 
 add_library(mnce_ui STATIC
+    ui/frameless-window-controller.cpp
+    ui/frameless-window-controller.h
     ui/media-detail-widget.cpp
     ui/media-detail-widget.h
     ui/main-window.cpp
     ui/main-window.h
+    ui/window-title-bar.cpp
+    ui/window-title-bar.h
 )
 target_link_libraries(
     mnce_ui

@@ -3,6 +3,7 @@
 #include "services/file-hash-service.h"
 #include "services/playback-backend.h"
 #include "ui/main-window.h"
+#include "ui/window-title-bar.h"
 
 #include <QComboBox>
 #include <QDataStream>
@@ -90,6 +91,7 @@ private slots:
     void restoresPlaybackRateAcrossWindows();
     void displaysBackendFailureAndRemainsNavigable();
     void relocatesMissingSingleAndReloadsIt();
+    void integratesCustomWindowFrameAndKeepsWorkflow();
 };
 
 namespace {
@@ -380,6 +382,73 @@ void MediaPlaybackUiTest::relocatesMissingSingleAndReloadsIt()
     QCOMPARE(QFileInfo(backend->loadedPath).absoluteFilePath(), QFileInfo(replacement).absoluteFilePath());
     QCOMPARE(window.findChild<QLabel*>(QStringLiteral("mediaDetailFileState"))->text(),
              QStringLiteral("可用"));
+}
+
+void MediaPlaybackUiTest::integratesCustomWindowFrameAndKeepsWorkflow()
+{
+    QTemporaryDir temporary;
+    const QString mediaPath = writeWav(temporary.path(), QStringLiteral("title.wav"));
+    const QString databasePath = temporary.filePath(QStringLiteral("db.sqlite3"));
+    const auto catalog = mnce::TargetLanguageCatalog::builtIn();
+    {
+        mnce::MediaRepository repository(catalog);
+        QString error;
+        QVERIFY(repository.open(databasePath, &error));
+        QVERIFY(repository.insert(singleItem(mediaPath)).status
+                == mnce::InsertMediaStatus::Inserted);
+    }
+
+    auto backendOwner = std::make_unique<FakePlaybackBackend>();
+    auto* backend = backendOwner.get();
+    mnce::MainWindow window(catalog, std::make_shared<FakeDialogs>(),
+                            std::move(backendOwner));
+    QString error;
+    QVERIFY(window.initialize(databasePath,
+                              temporary.filePath(QStringLiteral("settings.ini")), &error));
+    window.show();
+    waitForInitialRefresh(window);
+
+    auto* titleBar = window.findChild<mnce::WindowTitleBar*>(
+        QStringLiteral("windowTitleBar"));
+    auto* languageCombo = window.findChild<QComboBox*>(QStringLiteral("targetLanguageCombo"));
+#ifdef Q_OS_WIN
+    QVERIFY(window.windowFlags().testFlag(Qt::FramelessWindowHint));
+    QVERIFY(titleBar != nullptr);
+    QVERIFY(titleBar->findChild<QPushButton*>(QStringLiteral("windowMinimizeButton"))->isVisible());
+    auto* maximize = titleBar->findChild<QPushButton*>(
+        QStringLiteral("windowMaximizeRestoreButton"));
+    QVERIFY(maximize->isVisible());
+    auto* close = titleBar->findChild<QPushButton*>(QStringLiteral("windowCloseButton"));
+    QVERIFY(close->isVisible());
+    QVERIFY(!titleBar->isAncestorOf(languageCombo));
+    QCOMPARE(titleBar->findChild<QLabel*>(QStringLiteral("windowTitleLabel"))->text(),
+             window.windowTitle());
+
+    clickName(window.findChild<QTableWidget*>(QStringLiteral("mediaTable")), 0);
+    QCOMPARE(window.windowTitle(), QStringLiteral("title.wav — MNCE"));
+    QCOMPARE(titleBar->findChild<QLabel*>(QStringLiteral("windowTitleLabel"))->text(),
+             window.windowTitle());
+    QTest::mouseClick(window.findChild<QPushButton*>(QStringLiteral("detailBackButton")),
+                      Qt::LeftButton);
+    QCOMPARE(window.windowTitle(), QStringLiteral("MNCE"));
+
+    QTest::mouseClick(maximize, Qt::LeftButton);
+    QTRY_VERIFY(window.isMaximized());
+    QCOMPARE(maximize->accessibleName(), QStringLiteral("还原"));
+    QVERIFY(languageCombo->isVisible());
+    QTest::mouseClick(maximize, Qt::LeftButton);
+    QTRY_VERIFY(!window.isMaximized());
+    QCOMPARE(maximize->accessibleName(), QStringLiteral("最大化"));
+
+    const int stopsBeforeClose = backend->stopCalls;
+    QTest::mouseClick(close, Qt::LeftButton);
+    QTRY_VERIFY(!window.isVisible());
+    QVERIFY(backend->stopCalls > stopsBeforeClose);
+#else
+    QVERIFY(!window.windowFlags().testFlag(Qt::FramelessWindowHint));
+    QVERIFY(titleBar == nullptr);
+    QVERIFY(languageCombo->isVisible());
+#endif
 }
 
 QTEST_MAIN(MediaPlaybackUiTest)
