@@ -80,17 +80,17 @@ qtpaths6 --qt-version
 Debug：
 
 ```bash
-cmake --preset fedora-debug
-cmake --build --preset fedora-debug
-ctest --preset fedora-debug
+cmake --preset linux-debug
+cmake --build --preset linux-debug
+ctest --preset linux-debug
 ```
 
 Release：
 
 ```bash
-cmake --preset fedora-release
-cmake --build --preset fedora-release
-ctest --preset fedora-release
+cmake --preset linux-release
+cmake --build --preset linux-release
+ctest --preset linux-release
 ```
 
 GUI 测试必须从当前用户的有效图形桌面会话中运行。正常情况下不设置 `QT_QPA_PLATFORM`，由 Qt 根据 Wayland 或 X11 会话自动选择平台插件。
@@ -100,7 +100,7 @@ GUI 测试必须从当前用户的有效图形桌面会话中运行。正常情�
 在项目根目录运行对应构建产物：
 
 ```bash
-./build/fedora-debug/src/mnce
+./build/debug/src/mnce
 ```
 
 应用应以普通用户身份启动，不使用 `sudo`。Fedora 默认保留桌面环境提供的原生标题栏；M5 的 Windows 专用自定义窗口框架不会在 Fedora 启用。
@@ -115,7 +115,7 @@ GUI 测试必须从当前用户的有效图形桌面会话中运行。正常情�
 
 ## 开发工具集成
 
-使用支持 CMake 的 IDE 时，选择系统 GCC、Ninja、`fedora-debug` 或 `fedora-release` 预设，以及与命令行构建相同的 Qt 前缀。IDE 的构建目录应与命令行构建目录分开。不要在 Fedora 上选择 `windows-msvc-*` 预设。
+使用支持 CMake 的 IDE 时，选择系统 GCC、Ninja、`linux-debug` 或 `linux-release` 预设，以及与命令行构建相同的 Qt 前缀。IDE 的构建目录应与命令行构建目录分开。不要在 Fedora 上选择 `windows-msvc-*` 预设。
 
 ## 常见问题
 
@@ -128,7 +128,7 @@ GUI 测试必须从当前用户的有效图形桌面会话中运行。正常情�
 确认已安装 `qt6-qtwayland`，并从有效的桌面终端启动应用或 GUI 测试。只有在排查插件加载问题时临时使用：
 
 ```bash
-QT_DEBUG_PLUGINS=1 ./build/fedora-debug/src/mnce
+QT_DEBUG_PLUGINS=1 ./build/debug/src/mnce
 ```
 
 ### 音频没有输出

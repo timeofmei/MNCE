@@ -1,2 +1,2 @@
 CompileFlags:
-  CompilationDatabase: build/windows-msvc-debug
+  CompilationDatabase: build/debug

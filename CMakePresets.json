@@ -10,7 +10,6 @@
       "name": "windows-msvc-base",
       "hidden": true,
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/${presetName}",
       "cacheVariables": {
         "BUILD_TESTING": "ON",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
@@ -26,6 +25,7 @@
       "name": "windows-msvc-debug",
       "displayName": "Windows MSVC Debug",
       "inherits": "windows-msvc-base",
+      "binaryDir": "${sourceDir}/build/debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug"
       }
@@ -34,15 +34,15 @@
       "name": "windows-msvc-release",
       "displayName": "Windows MSVC Release",
       "inherits": "windows-msvc-base",
+      "binaryDir": "${sourceDir}/build/release",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"
       }
     },
     {
-      "name": "fedora-base",
+      "name": "linux-base",
       "hidden": true,
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/${presetName}",
       "cacheVariables": {
         "BUILD_TESTING": "ON",
         "CMAKE_CXX_COMPILER": "g++",
@@ -55,17 +55,19 @@
       }
     },
     {
-      "name": "fedora-debug",
-      "displayName": "Fedora GCC Debug",
-      "inherits": "fedora-base",
+      "name": "linux-debug",
+      "displayName": "Linux GCC Debug",
+      "inherits": "linux-base",
+      "binaryDir": "${sourceDir}/build/debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug"
       }
     },
     {
-      "name": "fedora-release",
-      "displayName": "Fedora GCC Release",
-      "inherits": "fedora-base",
+      "name": "linux-release",
+      "displayName": "Linux GCC Release",
+      "inherits": "linux-base",
+      "binaryDir": "${sourceDir}/build/release",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"
       }
@@ -81,12 +83,12 @@
       "configurePreset": "windows-msvc-release"
     },
     {
-      "name": "fedora-debug",
-      "configurePreset": "fedora-debug"
+      "name": "linux-debug",
+      "configurePreset": "linux-debug"
     },
     {
-      "name": "fedora-release",
-      "configurePreset": "fedora-release"
+      "name": "linux-release",
+      "configurePreset": "linux-release"
     }
   ],
   "testPresets": [
@@ -105,15 +107,15 @@
       }
     },
     {
-      "name": "fedora-debug",
-      "configurePreset": "fedora-debug",
+      "name": "linux-debug",
+      "configurePreset": "linux-debug",
       "output": {
         "outputOnFailure": true
       }
     },
     {
-      "name": "fedora-release",
-      "configurePreset": "fedora-release",
+      "name": "linux-release",
+      "configurePreset": "linux-release",
       "output": {
         "outputOnFailure": true
       }
