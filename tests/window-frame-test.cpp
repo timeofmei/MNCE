@@ -169,15 +169,14 @@ void WindowFrameTest::tracksTitleAndStandardButtonIcons()
     fixture.window.setWindowTitle(QStringLiteral("Changed title"));
     QCOMPARE(label->text(), QStringLiteral("Changed title"));
     fixture.window.setWindowState(Qt::WindowMaximized);
-    QCoreApplication::processEvents();
-    QCOMPARE(maximize->icon().cacheKey(),
-             fixture.titleBar->style()->standardIcon(QStyle::SP_TitleBarNormalButton).cacheKey());
-    QCOMPARE(maximize->accessibleName(), QStringLiteral("还原"));
+    QTRY_COMPARE(maximize->icon().cacheKey(),
+                 fixture.titleBar->style()->standardIcon(
+                     QStyle::SP_TitleBarNormalButton).cacheKey());
+    QTRY_COMPARE(maximize->accessibleName(), QStringLiteral("还原"));
     QVERIFY(maximize->isEnabled());
 
     fixture.window.setWindowState(Qt::WindowNoState);
-    QCoreApplication::processEvents();
-    QCOMPARE(maximize->accessibleName(), QStringLiteral("最大化"));
+    QTRY_COMPARE(maximize->accessibleName(), QStringLiteral("最大化"));
     QVERIFY(maximize->isEnabled());
 }
 
@@ -189,10 +188,10 @@ void WindowFrameTest::routesWindowButtonOperationsAndState()
 
     QTest::mouseClick(fixture.button("windowMaximizeRestoreButton"), Qt::LeftButton);
     QCOMPARE(fixture.operations.maximizeRequests, 1);
-    QCoreApplication::processEvents();
-    QVERIFY(fixture.window.isMaximized());
+    QTRY_VERIFY(fixture.window.isMaximized());
     QTest::mouseClick(fixture.button("windowMaximizeRestoreButton"), Qt::LeftButton);
     QCOMPARE(fixture.operations.normalRequests, 1);
+    QTRY_VERIFY(!fixture.window.isMaximized());
 
     QTest::mouseClick(fixture.button("windowCloseButton"), Qt::LeftButton);
     QCOMPARE(fixture.operations.closeRequests, 1);
@@ -311,7 +310,7 @@ void WindowFrameTest::mapsWindowsNativeHitTestRegions()
              qintptr(HTCLIENT));
 
     fixture.window.setWindowState(Qt::WindowMaximized);
-    QCoreApplication::processEvents();
+    QTRY_VERIFY(fixture.window.isMaximized());
     QCOMPARE(hitAtWindowPosition({1, fixture.window.height() / 2}), qintptr(HTCLIENT));
     QCOMPARE(fixture.windowsAdapter->nativeHitTestAt(
                  fixture.titleBar->mapToGlobal(titleBlank)),
