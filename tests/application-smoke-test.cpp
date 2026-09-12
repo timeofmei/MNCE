@@ -42,7 +42,7 @@ void ApplicationSmokeTest::showsAndClosesMainWindow()
 void ApplicationSmokeTest::usesExpectedQtRuntime()
 {
     QVERIFY(QVersionNumber::fromString(QString::fromLatin1(qVersion()))
-            >= QVersionNumber(6, 10, 2));
+            >= QVersionNumber(6, 11, 2));
 }
 
 void ApplicationSmokeTest::opensInMemorySqliteDatabase()

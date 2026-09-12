@@ -1,4 +1,4 @@
-find_package(Qt6 6.10.2 REQUIRED COMPONENTS Test)
+find_package(Qt6 6.11.2 REQUIRED COMPONENTS Test)
 
 add_executable(application_smoke_test application-smoke-test.cpp)
 target_link_libraries(
