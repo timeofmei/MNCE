@@ -2,6 +2,7 @@
 
 #include "ui/window-title-bar.h"
 
+#include <QAbstractButton>
 #include <QApplication>
 #include <QEvent>
 #include <QMouseEvent>
@@ -50,6 +51,18 @@ Qt::CursorShape cursorForEdges(Qt::Edges edges)
     return Qt::SizeVerCursor;
 }
 
+bool isInteractiveWidget(QWidget* widget, const QWidget* window)
+{
+    while (widget != nullptr && widget != window) {
+        if (qobject_cast<QAbstractButton*>(widget) != nullptr
+            || widget->focusPolicy() != Qt::NoFocus) {
+            return true;
+        }
+        widget = widget->parentWidget();
+    }
+    return false;
+}
+
 } // namespace
 
 FramelessWindowController::FramelessWindowController(
@@ -86,10 +99,20 @@ FramelessWindowController::FramelessWindowController(
 
 bool FramelessWindowController::enabledForCurrentPlatform()
 {
-#ifdef Q_OS_WIN
+#if defined(Q_OS_WIN) || defined(Q_OS_LINUX)
     return true;
 #else
     return false;
+#endif
+}
+
+void FramelessWindowController::applyInitialWindowFlags(QWidget* window)
+{
+    Q_ASSERT(window != nullptr);
+#ifdef Q_OS_LINUX
+    window->setWindowFlag(Qt::FramelessWindowHint);
+#else
+    Q_UNUSED(window);
 #endif
 }
 
@@ -149,10 +172,15 @@ bool FramelessWindowController::eventFilter(QObject* watched, QEvent* event)
 
     if (event->type() == QEvent::MouseMove) {
         const auto* mouseEvent = static_cast<QMouseEvent*>(event);
-        updateResizeCursor(mouseEvent->globalPosition().toPoint());
+        if (isInteractiveWidget(watchedWidget, window_)) {
+            window_->unsetCursor();
+        } else {
+            updateResizeCursor(mouseEvent->globalPosition().toPoint());
+        }
     } else if (event->type() == QEvent::MouseButtonPress) {
         const auto* mouseEvent = static_cast<QMouseEvent*>(event);
-        if (mouseEvent->button() == Qt::LeftButton && !window_->isMaximized()) {
+        if (mouseEvent->button() == Qt::LeftButton && !window_->isMaximized()
+            && !isInteractiveWidget(watchedWidget, window_)) {
             const Qt::Edges edges = edgesAtGlobalPosition(
                 mouseEvent->globalPosition().toPoint());
             if (edges != Qt::Edges{}) {

@@ -91,6 +91,7 @@ struct WindowFixture
                               | Qt::WindowMinimizeButtonHint
                               | Qt::WindowMaximizeButtonHint
                               | Qt::WindowCloseButtonHint);
+        mnce::FramelessWindowController::applyInitialWindowFlags(&window);
         window.setWindowTitle(QStringLiteral("Initial title"));
         window.resize(640, 400);
         auto* layout = new QVBoxLayout(&window);
@@ -129,6 +130,9 @@ private slots:
     void movesAndTogglesOnlyFromDraggableArea();
     void mapsAllResizeEdgesAndCorners();
     void ignoresOwnedTopLevelDialogs();
+#ifdef Q_OS_LINUX
+    void requestsLinuxSystemResizeAndUpdatesCursor();
+#endif
 #ifdef Q_OS_WIN
     void mapsWindowsNativeHitTestRegions();
     void limitsHandledWindowsMessages();
@@ -150,6 +154,12 @@ void WindowFrameTest::usesPlatformSpecificCustomFramePolicy()
     QVERIFY((style & static_cast<LONG_PTR>(WS_MINIMIZEBOX)) != 0);
     QVERIFY((style & static_cast<LONG_PTR>(WS_MAXIMIZEBOX)) != 0);
     QCOMPARE(style & static_cast<LONG_PTR>(WS_POPUP), 0);
+#elif defined(Q_OS_LINUX)
+    QVERIFY(mnce::FramelessWindowController::enabledForCurrentPlatform());
+    QVERIFY(fixture.window.windowFlags().testFlag(Qt::FramelessWindowHint));
+    QVERIFY(fixture.window.windowFlags().testFlag(Qt::WindowMinimizeButtonHint));
+    QVERIFY(fixture.window.windowFlags().testFlag(Qt::WindowMaximizeButtonHint));
+    QVERIFY(fixture.window.windowFlags().testFlag(Qt::WindowCloseButtonHint));
 #else
     QVERIFY(!mnce::FramelessWindowController::enabledForCurrentPlatform());
     QVERIFY(!fixture.window.windowFlags().testFlag(Qt::FramelessWindowHint));
@@ -215,22 +225,16 @@ void WindowFrameTest::movesAndTogglesOnlyFromDraggableArea()
                           QPointF(fixture.titleBar->mapToGlobal(movePosition)),
                           Qt::NoButton, Qt::LeftButton, Qt::NoModifier);
     QCoreApplication::sendEvent(fixture.titleBar, &moveEvent);
-#ifdef Q_OS_WIN
-    QCOMPARE(fixture.operations.moveRequests, 1);
-#else
-    QCOMPARE(fixture.operations.moveRequests, 0);
-#endif
+    QCOMPARE(fixture.operations.moveRequests,
+             mnce::FramelessWindowController::enabledForCurrentPlatform() ? 1 : 0);
     QTest::mouseDClick(titleLabel, Qt::LeftButton, Qt::NoModifier, titlePoint);
     QCOMPARE(fixture.operations.maximizeRequests, 1);
 
     auto* minimize = fixture.button("windowMinimizeButton");
     QTest::mousePress(minimize, Qt::LeftButton);
     QTest::mouseDClick(minimize, Qt::LeftButton);
-#ifdef Q_OS_WIN
-    QCOMPARE(fixture.operations.moveRequests, 1);
-#else
-    QCOMPARE(fixture.operations.moveRequests, 0);
-#endif
+    QCOMPARE(fixture.operations.moveRequests,
+             mnce::FramelessWindowController::enabledForCurrentPlatform() ? 1 : 0);
     QCOMPARE(fixture.operations.maximizeRequests, 1);
 }
 
@@ -270,6 +274,48 @@ void WindowFrameTest::ignoresOwnedTopLevelDialogs()
     QCoreApplication::sendEvent(&dialog, &event);
     QVERIFY(fixture.operations.resizeRequests.isEmpty());
 }
+
+#ifdef Q_OS_LINUX
+void WindowFrameTest::requestsLinuxSystemResizeAndUpdatesCursor()
+{
+    WindowFixture fixture;
+    const QPoint leftEdge(1, fixture.window.height() / 2);
+    const QPoint leftEdgeGlobal = fixture.window.mapToGlobal(leftEdge);
+    QMouseEvent moveEvent(QEvent::MouseMove, QPointF(leftEdge),
+                          QPointF(leftEdgeGlobal), Qt::NoButton, Qt::NoButton,
+                          Qt::NoModifier);
+    QCoreApplication::sendEvent(&fixture.window, &moveEvent);
+    QCOMPARE(fixture.window.cursor().shape(), Qt::SizeHorCursor);
+
+    QMouseEvent pressEvent(QEvent::MouseButtonPress, QPointF(leftEdge),
+                           QPointF(leftEdgeGlobal), Qt::LeftButton,
+                           Qt::LeftButton, Qt::NoModifier);
+    QCoreApplication::sendEvent(&fixture.window, &pressEvent);
+    QCOMPARE(fixture.operations.resizeRequests,
+             QVector<Qt::Edges>{Qt::Edges(Qt::LeftEdge)});
+
+    auto* close = fixture.button("windowCloseButton");
+    const QPoint closeEdge(close->width() - 1, close->height() / 2);
+    const QPoint closeEdgeGlobal = close->mapToGlobal(closeEdge);
+    QMouseEvent closeMoveEvent(QEvent::MouseMove, QPointF(closeEdge),
+                               QPointF(closeEdgeGlobal), Qt::NoButton,
+                               Qt::NoButton, Qt::NoModifier);
+    QCoreApplication::sendEvent(close, &closeMoveEvent);
+    QCOMPARE(fixture.window.cursor().shape(), Qt::ArrowCursor);
+    QMouseEvent closePressEvent(QEvent::MouseButtonPress, QPointF(closeEdge),
+                                QPointF(closeEdgeGlobal), Qt::LeftButton,
+                                Qt::LeftButton, Qt::NoModifier);
+    QCoreApplication::sendEvent(close, &closePressEvent);
+    QCOMPARE(fixture.operations.resizeRequests.size(), 1);
+
+    fixture.window.setWindowState(Qt::WindowMaximized);
+    QTRY_VERIFY(fixture.window.isMaximized());
+    QCoreApplication::sendEvent(&fixture.window, &moveEvent);
+    QCOMPARE(fixture.window.cursor().shape(), Qt::ArrowCursor);
+    QCoreApplication::sendEvent(&fixture.window, &pressEvent);
+    QCOMPARE(fixture.operations.resizeRequests.size(), 1);
+}
+#endif
 
 #ifdef Q_OS_WIN
 void WindowFrameTest::mapsWindowsNativeHitTestRegions()

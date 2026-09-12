@@ -203,6 +203,7 @@ struct MainWindow::Impl
 
     void buildUi()
     {
+        FramelessWindowController::applyInitialWindowFlags(window);
         window->setWindowTitle(QStringLiteral("MNCE"));
         window->resize(1040, 720);
 

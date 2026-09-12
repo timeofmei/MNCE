@@ -32,6 +32,7 @@ public:
                                        WindowSystemOperations* operations = nullptr);
 
     [[nodiscard]] static bool enabledForCurrentPlatform();
+    static void applyInitialWindowFlags(QWidget* window);
     [[nodiscard]] static Qt::Edges edgesAt(const QSize& windowSize,
                                            const QPoint& position,
                                            int margin);

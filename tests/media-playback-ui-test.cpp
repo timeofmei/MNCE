@@ -411,8 +411,15 @@ void MediaPlaybackUiTest::integratesCustomWindowFrameAndKeepsWorkflow()
     auto* titleBar = window.findChild<mnce::WindowTitleBar*>(
         QStringLiteral("windowTitleBar"));
     auto* languageCombo = window.findChild<QComboBox*>(QStringLiteral("targetLanguageCombo"));
-#ifdef Q_OS_WIN
+#if defined(Q_OS_WIN) || defined(Q_OS_LINUX)
+#ifdef Q_OS_LINUX
+    QVERIFY(window.windowFlags().testFlag(Qt::FramelessWindowHint));
+    QVERIFY(window.windowFlags().testFlag(Qt::WindowMinimizeButtonHint));
+    QVERIFY(window.windowFlags().testFlag(Qt::WindowMaximizeButtonHint));
+    QVERIFY(window.windowFlags().testFlag(Qt::WindowCloseButtonHint));
+#else
     QVERIFY(!window.windowFlags().testFlag(Qt::FramelessWindowHint));
+#endif
     QVERIFY(titleBar != nullptr);
     QVERIFY(titleBar->findChild<QPushButton*>(QStringLiteral("windowMinimizeButton"))->isVisible());
     auto* maximize = titleBar->findChild<QPushButton*>(
