@@ -14,6 +14,9 @@
 #include "ui/frameless-window-controller.h"
 #include "ui/media-detail-widget.h"
 #include "ui/window-title-bar.h"
+#ifdef Q_OS_WIN
+#include "ui/windows-window-frame-adapter.h"
+#endif
 
 #include <QCloseEvent>
 #include <QComboBox>
@@ -271,6 +274,14 @@ struct MainWindow::Impl
                              reloadAll();
                          });
     }
+
+#ifdef Q_OS_WIN
+    void installWindowsWindowFrame()
+    {
+        windowsFrameAdapter = new WindowsWindowFrameAdapter(
+            window, titleBar, frameController, window);
+    }
+#endif
 
     void buildSingleFilesTab()
     {
@@ -1127,6 +1138,9 @@ struct MainWindow::Impl
     std::unique_ptr<PlayerController> playerController;
     WindowTitleBar* titleBar = nullptr;
     FramelessWindowController* frameController = nullptr;
+#ifdef Q_OS_WIN
+    WindowsWindowFrameAdapter* windowsFrameAdapter = nullptr;
+#endif
     QComboBox* languageCombo = nullptr;
     QStackedWidget* pages = nullptr;
     QWidget* libraryPage = nullptr;
@@ -1186,6 +1200,9 @@ MainWindow::MainWindow(TargetLanguageCatalog catalog,
     , impl_(std::make_unique<Impl>(this, std::move(catalog), std::move(dialogs),
                                   std::move(playbackBackend)))
 {
+#ifdef Q_OS_WIN
+    impl_->installWindowsWindowFrame();
+#endif
 }
 
 MainWindow::~MainWindow()
@@ -1231,5 +1248,17 @@ void MainWindow::closeEvent(QCloseEvent* event)
     impl_->stopAndWait();
     QMainWindow::closeEvent(event);
 }
+
+#ifdef Q_OS_WIN
+bool MainWindow::nativeEvent(const QByteArray& eventType, void* message,
+                             qintptr* result)
+{
+    if (impl_ != nullptr && impl_->windowsFrameAdapter != nullptr
+        && impl_->windowsFrameAdapter->handleNativeEvent(eventType, message, result)) {
+        return true;
+    }
+    return QMainWindow::nativeEvent(eventType, message, result);
+}
+#endif
 
 } // namespace mnce

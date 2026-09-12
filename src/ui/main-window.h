@@ -8,6 +8,7 @@
 #include <optional>
 
 class QCloseEvent;
+class QByteArray;
 class QWidget;
 
 namespace mnce {
@@ -51,6 +52,10 @@ public:
 
 protected:
     void closeEvent(QCloseEvent* event) override;
+#ifdef Q_OS_WIN
+    bool nativeEvent(const QByteArray& eventType, void* message,
+                     qintptr* result) override;
+#endif
 
 private:
     struct Impl;

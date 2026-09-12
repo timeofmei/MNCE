@@ -34,15 +34,6 @@ public:
 
 QtWindowSystemOperations defaultOperations;
 
-void enableMouseTracking(QWidget* widget)
-{
-    widget->setMouseTracking(true);
-    const auto descendants = widget->findChildren<QWidget*>();
-    for (auto* descendant : descendants) {
-        descendant->setMouseTracking(true);
-    }
-}
-
 Qt::CursorShape cursorForEdges(Qt::Edges edges)
 {
     if (edges == (Qt::TopEdge | Qt::LeftEdge)
@@ -71,11 +62,6 @@ FramelessWindowController::FramelessWindowController(
 {
     Q_ASSERT(window_ != nullptr);
     Q_ASSERT(titleBar_ != nullptr);
-
-    if (enabledForCurrentPlatform()) {
-        window_->setWindowFlag(Qt::FramelessWindowHint, true);
-        enableMouseTracking(window_);
-    }
 
     window_->installEventFilter(this);
     if (qApp != nullptr) {
@@ -148,6 +134,9 @@ bool FramelessWindowController::eventFilter(QObject* watched, QEvent* event)
         }
     }
 
+#ifdef Q_OS_WIN
+    return QObject::eventFilter(watched, event);
+#else
     if (!enabledForCurrentPlatform()) {
         return QObject::eventFilter(watched, event);
     }
@@ -174,6 +163,7 @@ bool FramelessWindowController::eventFilter(QObject* watched, QEvent* event)
     }
 
     return QObject::eventFilter(watched, event);
+#endif
 }
 
 void FramelessWindowController::requestSystemMove()

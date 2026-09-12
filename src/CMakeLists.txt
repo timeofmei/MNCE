@@ -66,6 +66,15 @@ add_library(mnce_ui STATIC
     ui/window-title-bar.cpp
     ui/window-title-bar.h
 )
+if(WIN32)
+    target_sources(
+        mnce_ui
+        PRIVATE
+            ui/windows-window-frame-adapter.cpp
+            ui/windows-window-frame-adapter.h
+    )
+    target_link_libraries(mnce_ui PRIVATE user32)
+endif()
 target_link_libraries(
     mnce_ui
     PUBLIC
