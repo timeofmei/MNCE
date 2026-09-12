@@ -82,7 +82,7 @@ OpenAI Whisper 代码和模型权重为 MIT，whisper.cpp 也为 MIT，可与 MI
 
 ### FFmpeg
 
-- Qt Multimedia 播放优先使用 Qt 6.11.2 官方构建配套的默认 FFmpeg 后端及共享库，并通过 Qt 部署工具收集运行时依赖。
+- Qt Multimedia 播放优先使用正式发行所固定的 Qt 官方构建配套的默认 FFmpeg 后端及共享库，并通过 Qt 部署工具收集运行时依赖。
 - 项目自行构建的 FFmpeg 必须保持 LGPL 路径，禁止启用 `gpl` 和 `nonfree`，并使用共享库；基础配置包含 `--disable-gpl --disable-nonfree --enable-shared --disable-static`。
 - 自行构建时使用满足本地音频解码和重采样需求的最小配置，不为未确认的格式或功能增加组件。
 - 固定源码版本、补丁和完整 configure 参数。

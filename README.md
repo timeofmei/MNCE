@@ -59,4 +59,4 @@ Copy-Item .\build\windows-msvc-release\src\mnce.exe .\deploy\
 
 ## Fedora
 
-Fedora 的系统依赖、Qt 6.11.2 配置、Debug/Release 构建、测试、运行及常见问题见 [`doc/fedora-development.md`](doc/fedora-development.md)。
+Fedora 的系统依赖、Qt 配置、Debug/Release 构建、测试、运行及常见问题见 [`doc/fedora-development.md`](doc/fedora-development.md)。

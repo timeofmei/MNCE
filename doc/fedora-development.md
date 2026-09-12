@@ -12,11 +12,11 @@
 - GCC C++ 工具链，支持 C++20
 - CMake 3.30.5 或更高版本
 - Ninja
-- Qt 6.11.2，包含 Core、Concurrent、Network、Sql、Widgets 和 Multimedia
+- Qt 6.11.2 或更高版本，包含 Core、Concurrent、Network、Sql、Widgets 和 Multimedia
 - Wayland 或 X11 图形会话
 - 可用的桌面音频输出；Fedora 默认的 PipeWire 环境即可
 
-项目在 CMake 中要求 Qt 6.11.2 精确版本。不能通过放宽版本约束来适配开发机上的其他 Qt 版本。
+项目的 Qt 版本范围以[平台、发行与许可证](platform-and-distribution.md#技术栈)为准。CMake 会拒绝低于最低要求的 Qt；使用更高的 Qt 6 版本时应运行完整构建和测试。
 
 ## 安装开发环境
 
@@ -29,28 +29,28 @@ sudo dnf install \
     ninja-build
 ```
 
-### 安装 Qt 6.11.2
+### 安装 Qt
 
 下面两种 Qt 安装方案选择一种，不要同时执行。
 
 #### 方案一：使用 Fedora 系统 Qt
 
-当 Fedora 软件源仍提供 Qt 6.11.2 时，可以使用系统包。Qt 包必须在安装命令中显式限定为 `6.11.2`，不能依赖软件源当时的默认候选版本：
+当 Fedora 软件源提供满足项目最低要求的 Qt 时，可以直接使用系统包：
 
 ```bash
 sudo dnf install \
-    'qt6-qtbase-devel-6.11.2-*' \
-    'qt6-qtmultimedia-devel-6.11.2-*' \
-    'qt6-qtwayland-6.11.2-*'
+    qt6-qtbase-devel \
+    qt6-qtmultimedia-devel \
+    qt6-qtwayland
 ```
 
 `qt6-qtbase-devel` 提供项目使用的 Qt Core、Concurrent、Network、Sql 和 Widgets 开发文件，`qt6-qtmultimedia-devel` 提供 Qt Multimedia 开发文件。`qt6-qtwayland` 是 Wayland 桌面会话所需的运行时平台插件，不需要对应的开发包。
 
-上述版本限定只约束本次安装事务，不会阻止 Fedora 后续更新系统 Qt。不要使用 `dnf versionlock` 冻结全部 `qt6-*` 包：Fedora 桌面和其他系统应用也会使用这些包，长期锁定可能阻碍正常的兼容性及安全更新。如果系统 Qt 在后续更新中不再是 6.11.2，应改用独立 Qt 安装方案。
+`dnf` 会安装当前软件源提供的 Qt 6 版本，CMake 配置阶段会验证它是否满足项目最低要求。不要使用 `dnf versionlock` 冻结全部 `qt6-*` 包：Fedora 桌面和其他系统应用也会使用这些包，长期锁定可能阻碍正常的兼容性及安全更新。
 
 #### 方案二：使用独立 Qt 安装
 
-如果当前 Fedora 软件源不提供 Qt 6.11.2，或者需要不受系统 Qt 更新影响的长期稳定开发环境，应使用 Qt 官方安装器安装 Linux `gcc_64` 构建以及 Qt Multimedia 模块。安装方法见 Qt 官方的 [Get and Install Qt](https://doc.qt.io/qt-6/get-and-install-qt.html) 和 [Qt Online Installer](https://doc.qt.io/qt-6/qt-online-installation.html)。
+如果当前 Fedora 软件源的 Qt 低于项目最低要求，或者需要固定补丁版本以获得可复现的开发环境，应使用 Qt 官方安装器安装 Linux `gcc_64` 构建以及 Qt Multimedia 模块。安装方法见 Qt 官方的 [Get and Install Qt](https://doc.qt.io/qt-6/get-and-install-qt.html) 和 [Qt Online Installer](https://doc.qt.io/qt-6/qt-online-installation.html)。
 
 假设 Qt 安装在默认用户目录，可在当前终端设置：
 
@@ -73,7 +73,7 @@ ninja --version
 qtpaths6 --qt-version
 ```
 
-`qtpaths6 --qt-version` 必须输出 `6.11.2`。CMake 必须不低于 `3.30.5`。
+`qtpaths6 --qt-version` 输出的版本必须满足项目最低要求。CMake 必须不低于 `3.30.5`。
 
 ## 配置、构建与测试
 
@@ -121,7 +121,7 @@ GUI 测试必须从当前用户的有效图形桌面会话中运行。正常情�
 
 ### CMake 找不到 Qt 或报告版本不匹配
 
-先确认 `qtpaths6 --qt-version`，再检查 `CMAKE_PREFIX_PATH` 是否指向 Qt 6.11.2。修正环境后使用新的构建目录重新配置，不修改项目的 Qt 精确版本要求。
+先确认 `qtpaths6 --qt-version` 满足项目最低要求，再检查 `CMAKE_PREFIX_PATH` 是否指向预期的 Qt 安装。修正环境后使用新的构建目录重新配置，不降低项目的 Qt 最低版本要求。
 
 ### Wayland 平台插件无法加载
 
