@@ -1,5 +1,8 @@
 #include "ui/frameless-window-controller.h"
 #include "ui/window-title-bar.h"
+#ifdef Q_OS_WIN
+#include "ui/windows-window-frame-adapter.h"
+#endif
 
 #include <QCloseEvent>
 #include <QDialog>
@@ -10,6 +13,12 @@
 #include <QStyle>
 #include <QVBoxLayout>
 #include <QtTest>
+
+#ifdef Q_OS_WIN
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <windows.h>
+#endif
 
 namespace {
 
@@ -71,9 +80,17 @@ struct WindowFixture
     mnce::WindowTitleBar* titleBar = nullptr;
     RecordingOperations operations;
     std::unique_ptr<mnce::FramelessWindowController> controller;
+#ifdef Q_OS_WIN
+    std::unique_ptr<mnce::WindowsWindowFrameAdapter> windowsAdapter;
+#endif
 
     WindowFixture()
     {
+        window.setWindowFlags(Qt::Window | Qt::WindowTitleHint
+                              | Qt::WindowSystemMenuHint
+                              | Qt::WindowMinimizeButtonHint
+                              | Qt::WindowMaximizeButtonHint
+                              | Qt::WindowCloseButtonHint);
         window.setWindowTitle(QStringLiteral("Initial title"));
         window.resize(640, 400);
         auto* layout = new QVBoxLayout(&window);
@@ -83,6 +100,10 @@ struct WindowFixture
         layout->addStretch();
         controller = std::make_unique<mnce::FramelessWindowController>(
             &window, titleBar, &window, &operations);
+#ifdef Q_OS_WIN
+        windowsAdapter = std::make_unique<mnce::WindowsWindowFrameAdapter>(
+            &window, titleBar, controller.get());
+#endif
         window.show();
         if (!QTest::qWaitForWindowExposed(&window)) {
             qFatal("Test window was not exposed");
@@ -102,22 +123,33 @@ class WindowFrameTest final : public QObject
     Q_OBJECT
 
 private slots:
-    void usesPlatformSpecificFramelessPolicy();
+    void usesPlatformSpecificCustomFramePolicy();
     void tracksTitleAndStandardButtonIcons();
     void routesWindowButtonOperationsAndState();
     void movesAndTogglesOnlyFromDraggableArea();
     void mapsAllResizeEdgesAndCorners();
-    void requestsResizeOnlyForNormalWindows();
-    void updatesResizeCursorFromPointerPosition();
     void ignoresOwnedTopLevelDialogs();
+#ifdef Q_OS_WIN
+    void mapsWindowsNativeHitTestRegions();
+    void limitsHandledWindowsMessages();
+#endif
 };
 
-void WindowFrameTest::usesPlatformSpecificFramelessPolicy()
+void WindowFrameTest::usesPlatformSpecificCustomFramePolicy()
 {
     WindowFixture fixture;
 #ifdef Q_OS_WIN
     QVERIFY(mnce::FramelessWindowController::enabledForCurrentPlatform());
-    QVERIFY(fixture.window.windowFlags().testFlag(Qt::FramelessWindowHint));
+    QVERIFY(!fixture.window.windowFlags().testFlag(Qt::FramelessWindowHint));
+    QVERIFY(fixture.windowsAdapter->frameApplied());
+    const auto handle = reinterpret_cast<HWND>(fixture.window.winId());
+    const LONG_PTR style = GetWindowLongPtrW(handle, GWL_STYLE);
+    QCOMPARE(style & static_cast<LONG_PTR>(WS_CAPTION), 0);
+    QVERIFY((style & static_cast<LONG_PTR>(WS_THICKFRAME)) != 0);
+    QVERIFY((style & static_cast<LONG_PTR>(WS_SYSMENU)) != 0);
+    QVERIFY((style & static_cast<LONG_PTR>(WS_MINIMIZEBOX)) != 0);
+    QVERIFY((style & static_cast<LONG_PTR>(WS_MAXIMIZEBOX)) != 0);
+    QCOMPARE(style & static_cast<LONG_PTR>(WS_POPUP), 0);
 #else
     QVERIFY(!mnce::FramelessWindowController::enabledForCurrentPlatform());
     QVERIFY(!fixture.window.windowFlags().testFlag(Qt::FramelessWindowHint));
@@ -221,61 +253,6 @@ void WindowFrameTest::mapsAllResizeEdgesAndCorners()
     QCOMPARE(Controller::edgesAt(size, {-1, 40}, margin), Qt::Edges{});
 }
 
-void WindowFrameTest::requestsResizeOnlyForNormalWindows()
-{
-    WindowFixture fixture;
-    const QPoint edgePoint(1, fixture.window.height() / 2);
-    const QRect originalGeometry = fixture.window.geometry();
-    fixture.operations.systemRequestResult = false;
-    QTest::mousePress(&fixture.window, Qt::LeftButton, Qt::NoModifier, edgePoint);
-#ifdef Q_OS_WIN
-    QCOMPARE(fixture.operations.resizeRequests,
-             QVector<Qt::Edges>{Qt::Edges(Qt::LeftEdge)});
-#else
-    QVERIFY(fixture.operations.resizeRequests.isEmpty());
-#endif
-    QCOMPARE(fixture.window.geometry(), originalGeometry);
-
-    fixture.window.setWindowState(Qt::WindowMaximized);
-    QCoreApplication::processEvents();
-    QTest::mousePress(&fixture.window, Qt::LeftButton, Qt::NoModifier, edgePoint);
-#ifdef Q_OS_WIN
-    QCOMPARE(fixture.operations.resizeRequests.size(), 1);
-#else
-    QVERIFY(fixture.operations.resizeRequests.isEmpty());
-#endif
-    QVERIFY(fixture.window.cursor().shape() == Qt::ArrowCursor);
-}
-
-void WindowFrameTest::updatesResizeCursorFromPointerPosition()
-{
-    WindowFixture fixture;
-    const auto moveTo = [&fixture](const QPoint& position) {
-        const QPoint globalPosition = fixture.window.mapToGlobal(position);
-        QMouseEvent event(QEvent::MouseMove, QPointF(position), QPointF(globalPosition),
-                          Qt::NoButton, Qt::NoButton, Qt::NoModifier);
-        QCoreApplication::sendEvent(&fixture.window, &event);
-    };
-
-    moveTo({1, fixture.window.height() / 2});
-#ifdef Q_OS_WIN
-    QCOMPARE(fixture.window.cursor().shape(), Qt::SizeHorCursor);
-    moveTo({fixture.window.width() / 2, 1});
-    QCOMPARE(fixture.window.cursor().shape(), Qt::SizeVerCursor);
-    moveTo({1, 1});
-    QCOMPARE(fixture.window.cursor().shape(), Qt::SizeFDiagCursor);
-    moveTo({fixture.window.width() - 2, 1});
-    QCOMPARE(fixture.window.cursor().shape(), Qt::SizeBDiagCursor);
-#endif
-    moveTo(fixture.window.rect().center());
-    QCOMPARE(fixture.window.cursor().shape(), Qt::ArrowCursor);
-
-    fixture.window.setWindowState(Qt::WindowMaximized);
-    QCoreApplication::processEvents();
-    moveTo({1, fixture.window.height() / 2});
-    QCOMPARE(fixture.window.cursor().shape(), Qt::ArrowCursor);
-}
-
 void WindowFrameTest::ignoresOwnedTopLevelDialogs()
 {
     WindowFixture fixture;
@@ -291,6 +268,76 @@ void WindowFrameTest::ignoresOwnedTopLevelDialogs()
     QCoreApplication::sendEvent(&dialog, &event);
     QVERIFY(fixture.operations.resizeRequests.isEmpty());
 }
+
+#ifdef Q_OS_WIN
+void WindowFrameTest::mapsWindowsNativeHitTestRegions()
+{
+    WindowFixture fixture;
+    const auto hitAtWindowPosition = [&fixture](const QPoint& position) {
+        return fixture.windowsAdapter->nativeHitTestAt(
+            fixture.window.mapToGlobal(position));
+    };
+
+    QCOMPARE(hitAtWindowPosition({1, 1}), qintptr(HTTOPLEFT));
+    QCOMPARE(hitAtWindowPosition({fixture.window.width() - 2, 1}),
+             qintptr(HTTOPRIGHT));
+    QCOMPARE(hitAtWindowPosition({1, fixture.window.height() - 2}),
+             qintptr(HTBOTTOMLEFT));
+    QCOMPARE(hitAtWindowPosition(
+                 {fixture.window.width() - 2, fixture.window.height() - 2}),
+             qintptr(HTBOTTOMRIGHT));
+    QCOMPARE(hitAtWindowPosition({1, fixture.window.height() / 2}), qintptr(HTLEFT));
+    QCOMPARE(hitAtWindowPosition(
+                 {fixture.window.width() - 2, fixture.window.height() / 2}),
+             qintptr(HTRIGHT));
+    QCOMPARE(hitAtWindowPosition({-1, fixture.window.height() / 2}),
+             qintptr(HTNOWHERE));
+
+    const QPoint titleBlank(20, fixture.titleBar->height() / 2);
+    QVERIFY(fixture.titleBar->isDraggableAt(titleBlank));
+    QCOMPARE(fixture.windowsAdapter->nativeHitTestAt(
+                 fixture.titleBar->mapToGlobal(titleBlank)),
+             qintptr(HTCAPTION));
+
+    auto* minimize = fixture.button("windowMinimizeButton");
+    const QPoint buttonPosition = minimize->rect().center();
+    QVERIFY(!fixture.titleBar->isDraggableAt(
+        fixture.titleBar->mapFromGlobal(minimize->mapToGlobal(buttonPosition))));
+    QCOMPARE(fixture.windowsAdapter->nativeHitTestAt(
+                 minimize->mapToGlobal(buttonPosition)),
+             qintptr(HTCLIENT));
+    QCOMPARE(hitAtWindowPosition(
+                 {fixture.window.width() / 2, fixture.window.height() - 20}),
+             qintptr(HTCLIENT));
+
+    fixture.window.setWindowState(Qt::WindowMaximized);
+    QCoreApplication::processEvents();
+    QCOMPARE(hitAtWindowPosition({1, fixture.window.height() / 2}), qintptr(HTCLIENT));
+    QCOMPARE(fixture.windowsAdapter->nativeHitTestAt(
+                 fixture.titleBar->mapToGlobal(titleBlank)),
+             qintptr(HTCAPTION));
+}
+
+void WindowFrameTest::limitsHandledWindowsMessages()
+{
+    WindowFixture fixture;
+    MSG message{};
+    message.hwnd = reinterpret_cast<HWND>(fixture.window.winId());
+    message.message = WM_NCRBUTTONUP;
+    message.wParam = HTCAPTION;
+    qintptr result = -1;
+    QVERIFY(fixture.windowsAdapter->handleNativeEvent(
+        QByteArrayLiteral("windows_generic_MSG"), &message, &result));
+    QCOMPARE(result, qintptr(0));
+
+    message.message = WM_SYSCOMMAND;
+    message.wParam = SC_KEYMENU;
+    QVERIFY(!fixture.windowsAdapter->handleNativeEvent(
+        QByteArrayLiteral("windows_generic_MSG"), &message, &result));
+    QVERIFY(!fixture.windowsAdapter->handleNativeEvent(
+        QByteArrayLiteral("not-a-windows-event"), &message, &result));
+}
+#endif
 
 QTEST_MAIN(WindowFrameTest)
 

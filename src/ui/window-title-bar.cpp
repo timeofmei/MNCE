@@ -1,6 +1,7 @@
 #include "ui/window-title-bar.h"
 
 #include <QApplication>
+#include <QAbstractButton>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QMouseEvent>
@@ -81,6 +82,23 @@ void WindowTitleBar::setWindowState(bool maximized, bool canMinimize,
     maximizeRestoreButton_->setAccessibleName(maximized ? tr("还原") : tr("最大化"));
     maximizeRestoreButton_->setIcon(style()->standardIcon(
         maximized ? QStyle::SP_TitleBarNormalButton : QStyle::SP_TitleBarMaxButton));
+}
+
+bool WindowTitleBar::isDraggableAt(const QPoint& position) const
+{
+    if (!rect().contains(position)) {
+        return false;
+    }
+
+    const QWidget* child = childAt(position);
+    while (child != nullptr && child != this) {
+        if (qobject_cast<const QAbstractButton*>(child) != nullptr
+            || child->focusPolicy() != Qt::NoFocus) {
+            return false;
+        }
+        child = child->parentWidget();
+    }
+    return true;
 }
 
 void WindowTitleBar::mousePressEvent(QMouseEvent* event)

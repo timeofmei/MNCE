@@ -18,6 +18,7 @@ public:
     void setTitle(const QString& title);
     void setWindowState(bool maximized, bool canMinimize, bool canMaximize,
                         bool canClose);
+    [[nodiscard]] bool isDraggableAt(const QPoint& position) const;
 
 signals:
     void minimizeRequested();
