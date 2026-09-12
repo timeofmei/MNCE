@@ -161,17 +161,20 @@ void WindowFrameTest::tracksTitleAndStandardButtonIcons()
     WindowFixture fixture;
     auto* label = fixture.titleBar->findChild<QLabel*>(QStringLiteral("windowTitleLabel"));
     auto* maximize = fixture.button("windowMaximizeRestoreButton");
+    const auto iconImage = [](const QIcon& icon) {
+        return icon.pixmap(16, 16).toImage();
+    };
     QCOMPARE(label->text(), QStringLiteral("Initial title"));
-    QCOMPARE(maximize->icon().cacheKey(),
-             fixture.titleBar->style()->standardIcon(QStyle::SP_TitleBarMaxButton).cacheKey());
+    QCOMPARE(iconImage(maximize->icon()),
+             iconImage(fixture.titleBar->style()->standardIcon(QStyle::SP_TitleBarMaxButton)));
     QCOMPARE(maximize->accessibleName(), QStringLiteral("最大化"));
 
     fixture.window.setWindowTitle(QStringLiteral("Changed title"));
     QCOMPARE(label->text(), QStringLiteral("Changed title"));
     fixture.window.setWindowState(Qt::WindowMaximized);
-    QTRY_COMPARE(maximize->icon().cacheKey(),
-                 fixture.titleBar->style()->standardIcon(
-                     QStyle::SP_TitleBarNormalButton).cacheKey());
+    QTRY_COMPARE(iconImage(maximize->icon()),
+                 iconImage(fixture.titleBar->style()->standardIcon(
+                     QStyle::SP_TitleBarNormalButton)));
     QTRY_COMPARE(maximize->accessibleName(), QStringLiteral("还原"));
     QVERIFY(maximize->isEnabled());
 

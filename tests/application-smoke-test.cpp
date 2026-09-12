@@ -5,6 +5,7 @@
 #include <QSqlDatabase>
 #include <QSqlError>
 #include <QString>
+#include <QVersionNumber>
 #include <QtGlobal>
 #include <QtTest>
 
@@ -40,7 +41,8 @@ void ApplicationSmokeTest::showsAndClosesMainWindow()
 
 void ApplicationSmokeTest::usesExpectedQtRuntime()
 {
-    QCOMPARE(QString::fromLatin1(qVersion()), QStringLiteral("6.11.2"));
+    QVERIFY(QVersionNumber::fromString(QString::fromLatin1(qVersion()))
+            >= QVersionNumber(6, 11, 2));
 }
 
 void ApplicationSmokeTest::opensInMemorySqliteDatabase()

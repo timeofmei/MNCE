@@ -13,7 +13,7 @@ if(WIN32 AND NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
 endif()
 
 find_package(
-    Qt6 6.11.2 EXACT
+    Qt6 6.11.2
     REQUIRED COMPONENTS
         Concurrent
         Core

@@ -38,7 +38,7 @@ M4 先建立整段音频播放能力。按句播放、句间静音、循环、�
 
 ## 技术边界
 
-- M4 使用 Qt 6.11.2 的 `QMediaPlayer` 和 `QAudioOutput`，通过 Qt Multimedia 默认媒体后端播放，不直接调用 FFmpeg API。
+- M4 使用[项目最低支持 Qt 版本](platform-and-distribution.md#技术栈)提供的 `QMediaPlayer` 和 `QAudioOutput`，通过 Qt Multimedia 默认媒体后端播放，不直接调用 FFmpeg API。
 - 软硬件解码路径由 Qt Multimedia 默认后端自动选择；应用不强制指定硬件设备，也不依赖 Qt Multimedia 的私有环境变量改变生产配置。
 - Qt Multimedia 播放对象在应用/UI 线程中创建和使用；媒体加载与播放本身采用其异步接口，不阻塞 UI。
 - UI 通过可替换的播放边界观察状态、位置、时长、可跳转状态和结构化错误，使自动测试不依赖真实声卡或系统解码器。
