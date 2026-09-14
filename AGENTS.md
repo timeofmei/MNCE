@@ -50,7 +50,7 @@ Do not work through an entire milestone silently. Keep the user involved at the 
 ## Build and dependency rules
 
 - Machine-specific SSH aliases, private paths, GUI session variables, and remote
-  validation commands are kept in `local-data/local-dev.md` when that file exists. 
+  validation commands are kept in `local-data/local-dev.md` when that file exists.
   Read it before remote platform testing, and do not commit it or copy its private
   values into tracked project documentation.
 - Use C++20 and Qt 6.11.2 or newer on every supported platform.
