@@ -12,6 +12,7 @@ MNCE 意为 **Master New Concept English**。产品定位是一款轻量化的�
 - [M4：本地音频播放基础](M4.md)：统一媒体详情、时长、播放控制和倍速偏好
 - [M5：Windows 自定义标题栏](M5.md)：自定义主窗口框架、Windows 系统贴靠和基础窗口控制
 - [M6：Linux 自定义标题栏](M6.md)：复用主窗口框架并验证 KDE/GNOME Wayland 窗口交互
+- [M7：Whisper 模型管理](M7.md)：内置模型目录、下载、校验、删除和自动选择
 - [产品范围](product-scope.md)：产品定位、MVP 范围和明确不做的功能
 - [目标语言与内容空间](target-languages.md)：可扩充语言目录、全局语言上下文和跨语言隔离规则
 - [媒体库与语音识别](media-and-transcription.md)：文件管理、内容身份、模型和识别流程
